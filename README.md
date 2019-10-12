@@ -1,5 +1,5 @@
 # D-lay
-A Degrading Delay VST based off of the traditional analog BBD (Bucket Brigade Delay), but with added digital enhancements
+A Decomposing Delay VST based off of the traditional analog BBD (Bucket Brigade Delay), but with added digital enhancements
 
 ## Delay Algorithm (My modifications to the code from the following [JUCE tutorial](www.youtube.com/watch?v=IRFUYGkMV8w):
 -getFromDelayBuffer: 
