@@ -1,7 +1,7 @@
 # D-lay
 A gradually deteriorating Delay based off of the traditional analog BBD (Bucket Brigade Delay)
 
-## Delay Algorithm (My modifications to the code from the following [JUCE tutorial](www.youtube.com/watch?v=IRFUYGkMV8w):
+## Delay Algorithm (My modifications to the code from the following [JUCE tutorial][1]):
 -getFromDelayBuffer: 
 	1. add accumulated delayed signal (wet) to buffer (dry) with gain of 'mFeedback'
 -fillDelayBuffer:
@@ -20,4 +20,4 @@ A gradually deteriorating Delay based off of the traditional analog BBD (Bucket 
 
 ###### VST3 files in D-lay\Builds\VisualStudio2019\x64\Release or D-lay\Builds\VisualStudio2019\Win32\Release32
 
-
+[1]: https://www.youtube.com/watch?v=IRFUYGkMV8w
