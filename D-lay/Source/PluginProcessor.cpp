@@ -93,6 +93,9 @@ void DlayAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 	mDelayBuffer.setSize(totalNumInputChannels, delayBufferLength);
 	for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
 		mDelayBuffer.clear(i, 0, delayBufferLength);
+	const float sampleFreq = static_cast<float> (1 / sampleRate);
+	slewRise *= sampleFreq;
+	slewFall *= sampleFreq;
 }
 
 void DlayAudioProcessor::releaseResources()
@@ -139,8 +142,9 @@ void DlayAudioProcessor::processBlock (AudioBuffer<float>& buffer, MidiBuffer& m
 	//processing
     for (int channel = 0; channel < totalNumInputChannels; ++channel)
     {
-		const float* bufferData = buffer.getReadPointer(channel);
+		float* bufferData = buffer.getWritePointer(channel);
 		const float* delayBufferData = mDelayBuffer.getReadPointer(channel);
+		limitSlew(bufferData, channel);
 		getFromDelayBuffer(buffer, channel, bufferLength, delayBufferLength, delayBufferData);
 		fillDelayBuffer(channel, bufferLength, delayBufferLength, bufferData);
     }
@@ -178,6 +182,18 @@ void DlayAudioProcessor::fillDelayBuffer(int channel, int bufferLength, int dela
 		mDelayBuffer.copyFrom(channel, 0, bufferData + bufferRemaining, bufferLength - bufferRemaining);
 	}
 
+}
+void DlayAudioProcessor::limitSlew(float* buffer, int channel) 
+{
+	for (auto i = 1; i < bufferLength; ++i)
+	{
+		if (buffer[i] > buffer[i - 1]) {
+			buffer[i] = jmin(buffer[i], buffer[i - 1] + slewRise);
+		}
+		else {
+			buffer[i] = jmax(buffer[i], buffer[i - 1] - slewFall);
+		}	
+	}
 }
 
 
