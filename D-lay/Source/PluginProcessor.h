@@ -51,18 +51,18 @@ private:
 	int mSampleRate{ 192000 };
 	AudioBuffer<float> mDelayBuffer;
 	//processBlock
+	bool isActive = false;
 	void getFromDelayBuffer(AudioBuffer<float>& buffer, int channel, int bufferLength,
 		int delayBufferLength, const float* delayBufferData);
-	void limitSlew(float* buffer, int channel);
 	void fillDelayBuffer(int channel, int bufferLength, int delayBufferLength,
 		const float* bufferData);
 	int mWritePosition{ 0 };
 	//getFromDelayBuffer
 	int delayTime = 500;
 	float mFeedback = 0.5;
-	//limitSlew
-	float slewRise = 10000000;
-	float slewFall = 15000000;
+	//ResonantLP
+	dsp::LadderFilter<float> LP;
+
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (DlayAudioProcessor)
 };
