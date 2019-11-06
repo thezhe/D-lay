@@ -91,14 +91,20 @@ void DlayAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 	delayBufferLength = 2 * (sampleRate + samplesPerBlock);
 	mSampleRate = sampleRate;
 	mDelayBuffer.setSize(totalNumInputChannels, delayBufferLength);
-	for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
-		mDelayBuffer.clear(i, 0, delayBufferLength);
+	mSendToDelayBuffer.setSize(totalNumInputChannels, mSampleRate);
+	//ResonantLP
+	dsp::ProcessSpec spec{ sampleRate, static_cast<uint32>(bufferLength), static_cast<uint32>(totalNumInputChannels) };
+	LP.setCutoffFrequencyHz(3000.0f);
+	LP.setResonance(0.2f);
+	LP.setDrive(2);
+	LP.setMode(dsp::LadderFilter<float>::Mode::LPF12);
+	LP.prepare(spec);
+	isActive = true;
 }
 
 void DlayAudioProcessor::releaseResources()
 {
-    // When playback stops, you can use this as an opportunity to free up any
-    // spare memory, etc.
+	LP.reset();
 }
 
 #ifndef JucePlugin_PreferredChannelConfigurations
@@ -128,6 +134,9 @@ bool DlayAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) con
 void DlayAudioProcessor::processBlock (AudioBuffer<float>& buffer, MidiBuffer& midiMessages)
 {
 	ScopedNoDenormals noDenormals;
+
+	if (isActive == false)
+		return;
 	/*
 	potential enhancement for stopping and clearing buffers when daw pauses play
 	AudioPlayHead::CurrentPositionInfo info;
@@ -136,34 +145,47 @@ void DlayAudioProcessor::processBlock (AudioBuffer<float>& buffer, MidiBuffer& m
 		foo();*/
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
-	//processing
+	//====================================================================processing
+	//Read
     for (int channel = 0; channel < totalNumInputChannels; ++channel)
     {
 		const float* bufferData = buffer.getReadPointer(channel);
 		const float* delayBufferData = mDelayBuffer.getReadPointer(channel);
-		getFromDelayBuffer(buffer, channel, bufferLength, delayBufferLength, delayBufferData);
-		fillDelayBuffer(channel, bufferLength, delayBufferLength, bufferData);
+		getFromDelayBuffer(buffer, channel, bufferLength, delayBufferLength, delayBufferData, bufferData);
     }
+	//LPF24 and fill delay line
+	dsp::AudioBlock<float> block(mSendToDelayBuffer);
+	dsp::ProcessContextReplacing<float> context(block);
+	LP.process(context);
+	for (int channel = 0; channel < totalNumInputChannels; ++channel)
+	{
+		const float* bufferData = mSendToDelayBuffer.getReadPointer(channel);
+		fillDelayBuffer(channel, bufferLength, delayBufferLength, bufferData);
+	}
 	mWritePosition += bufferLength;
 	mWritePosition %= delayBufferLength;
 }
 
 
 void DlayAudioProcessor::getFromDelayBuffer(AudioBuffer<float>& buffer, int channel, int bufferLength,
-	int delayBufferLength, const float* delayBufferData)
+	int delayBufferLength, const float* delayBufferData, const float* bufferData)
 {
 	const int readPosition = static_cast<int> (delayBufferLength + mWritePosition - (mSampleRate * delayTime / 1000))
 		% delayBufferLength;
 
+	mSendToDelayBuffer.makeCopyOf(buffer);
 	if (delayBufferLength > bufferLength + readPosition)
 	{
-		buffer.addFromWithRamp(channel, 0, delayBufferData + readPosition, bufferLength, mFeedback, mFeedback);
+		mSendToDelayBuffer.addFrom(channel, 0, delayBufferData + readPosition, bufferLength, mFeedback);
+		buffer.addFrom(channel, 0, delayBufferData + readPosition, bufferLength, mWet);
 	}
 	else
 	{
 		const int bufferRemaining = delayBufferLength - readPosition;
-		buffer.addFromWithRamp(channel, 0, delayBufferData + readPosition, bufferRemaining, mFeedback, mFeedback);
-		buffer.addFromWithRamp(channel, bufferRemaining, delayBufferData, bufferLength - bufferRemaining, mFeedback, mFeedback);
+		mSendToDelayBuffer.addFrom(channel, 0, delayBufferData + readPosition, bufferRemaining, mFeedback);
+		mSendToDelayBuffer.addFrom(channel, bufferRemaining, delayBufferData, bufferLength - bufferRemaining, mFeedback);
+		buffer.addFrom(channel, 0, delayBufferData + readPosition, bufferRemaining, mWet);
+		buffer.addFrom(channel, bufferRemaining, delayBufferData, bufferLength - bufferRemaining, mWet);
 	}
 }
 void DlayAudioProcessor::fillDelayBuffer(int channel, int bufferLength, int delayBufferLength, const float* bufferData)
@@ -179,7 +201,6 @@ void DlayAudioProcessor::fillDelayBuffer(int channel, int bufferLength, int dela
 	}
 
 }
-
 
 
 //==============================================================================
