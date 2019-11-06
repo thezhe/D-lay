@@ -41,7 +41,9 @@ public:
     //==============================================================================
     void getStateInformation (MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
-
+	int delayTime = 500;
+	float mFeedback = 0.5;
+	float mWet = 0.5;
 private:
 	//prepareToPlay
 	int totalNumInputChannels;
@@ -50,16 +52,16 @@ private:
 	int delayBufferLength;
 	int mSampleRate{ 192000 };
 	AudioBuffer<float> mDelayBuffer;
+	AudioBuffer<float> mSendToDelayBuffer;
 	//processBlock
 	bool isActive = false;
 	void getFromDelayBuffer(AudioBuffer<float>& buffer, int channel, int bufferLength,
-		int delayBufferLength, const float* delayBufferData);
+		int delayBufferLength, const float* delayBufferData, const float* bufferData);
 	void fillDelayBuffer(int channel, int bufferLength, int delayBufferLength,
 		const float* bufferData);
 	int mWritePosition{ 0 };
 	//getFromDelayBuffer
-	int delayTime = 500;
-	float mFeedback = 0.5;
+	
 	//ResonantLP
 	dsp::LadderFilter<float> LP;
 
