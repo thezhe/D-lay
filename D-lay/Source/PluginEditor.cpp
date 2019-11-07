@@ -1,13 +1,3 @@
-/*
-  ==============================================================================
-
-    This file was auto-generated!
-
-    It contains the basic framework code for a JUCE plugin editor.
-
-  ==============================================================================
-*/
-
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 
@@ -15,10 +5,8 @@
 DlayAudioProcessorEditor::DlayAudioProcessorEditor (DlayAudioProcessor& p)
     : AudioProcessorEditor (&p), processor (p)
 {
-    // Make sure that before the constructor has finished, you've set the
-    // editor's size to whatever you need it to be.
     setSize (400, 300);
-
+	//TODO set lower bound for mRate
 	mRate.setSliderStyle(Slider::LinearBar);
 	mRate.setRange(0, 2000);
 	mRate.setTextBoxStyle(Slider::NoTextBox, false, 90, 0);
@@ -40,21 +28,21 @@ DlayAudioProcessorEditor::DlayAudioProcessorEditor (DlayAudioProcessor& p)
 	mWet.setTextValueSuffix("Wet");
 	mWet.setValue(0.8);
 
-	mRate.addListener(this);
-	mFeedback.addListener(this);
-	mWet.addListener(this);
-
+	mRate.onValueChange = [this] { 
+		processor.mRate = mRate.getValue();
+		processor.clearDelayBuffer();
+	};
+	mFeedback.onValueChange = [this] { 
+		processor.mFeedback = mFeedback.getValue(); 
+		processor.clearDelayBuffer(); 
+	};
+	mWet.onValueChange = [this] { processor.mWet = mWet.getValue(); };
+	
 	addAndMakeVisible(&mRate);
 	addAndMakeVisible(&mFeedback);
 	addAndMakeVisible(&mWet);
 }
 
-void DlayAudioProcessorEditor::sliderValueChanged(Slider* slider)
-{
-	processor.delayTime = mRate.getValue();
-	processor.mFeedback = mFeedback.getValue();
-	processor.mWet = mWet.getValue();
-}
 
 DlayAudioProcessorEditor::~DlayAudioProcessorEditor()
 {
@@ -67,8 +55,6 @@ void DlayAudioProcessorEditor::paint (Graphics& g)
     g.fillAll (getLookAndFeel().findColour (ResizableWindow::backgroundColourId));
 
     g.setColour (Colours::white);
-    g.setFont (15.0f);
-    g.drawFittedText ("Hello World!", getLocalBounds(), Justification::centred, 1);
 }
 
 void DlayAudioProcessorEditor::resized()

@@ -85,21 +85,21 @@ void DlayAudioProcessor::changeProgramName (int index, const String& newName)
 //==============================================================================
 void DlayAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
-	totalNumInputChannels = getTotalNumInputChannels();
-	totalNumOutputChannels = getTotalNumOutputChannels();
-	bufferLength = samplesPerBlock;
-	delayBufferLength = 2 * (sampleRate + samplesPerBlock);
+	//environment variables and member buffers
+	mTotalNumInputChannels = getTotalNumInputChannels();
+	mTotalNumOutputChannels = getTotalNumOutputChannels();
+	mBufferLength = samplesPerBlock;
+	mDelayBufferLength = 2 * (sampleRate + samplesPerBlock);
 	mSampleRate = sampleRate;
-	mDelayBuffer.setSize(totalNumInputChannels, delayBufferLength);
-	mSendToDelayBuffer.setSize(totalNumInputChannels, mSampleRate);
+	mDelayBuffer.setSize(mTotalNumInputChannels, mDelayBufferLength);
+	mSendToDelayBuffer.setSize(mTotalNumInputChannels, mBufferLength);
 	//ResonantLP
-	dsp::ProcessSpec spec{ sampleRate, static_cast<uint32>(bufferLength), static_cast<uint32>(totalNumInputChannels) };
+	dsp::ProcessSpec spec{ sampleRate, static_cast<uint32>(mBufferLength), static_cast<uint32>(mTotalNumInputChannels) };
 	LP.setCutoffFrequencyHz(3000.0f);
-	LP.setResonance(0.2f);
-	LP.setDrive(2);
-	LP.setMode(dsp::LadderFilter<float>::Mode::LPF12);
+	LP.setResonance(0.22f);
+	LP.setMode(dsp::LadderFilter<float>::Mode::LPF24);
 	LP.prepare(spec);
-	isActive = true;
+	mLock = false;
 }
 
 void DlayAudioProcessor::releaseResources()
@@ -135,7 +135,7 @@ void DlayAudioProcessor::processBlock (AudioBuffer<float>& buffer, MidiBuffer& m
 {
 	ScopedNoDenormals noDenormals;
 
-	if (isActive == false)
+	if (mLock == true)
 		return;
 	/*
 	potential enhancement for stopping and clearing buffers when daw pauses play
@@ -143,61 +143,63 @@ void DlayAudioProcessor::processBlock (AudioBuffer<float>& buffer, MidiBuffer& m
 	getAudioPlayHead().getCurrentPosition(info);
 	if (info.isPlaying)
 		foo();*/
-    for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
-        buffer.clear (i, 0, buffer.getNumSamples());
+
+	//clear data
+	for (auto i = mTotalNumInputChannels; i < mTotalNumOutputChannels; ++i)
+		buffer.clear(i, 0, buffer.getNumSamples());
 	//====================================================================processing
-	//Read
-    for (int channel = 0; channel < totalNumInputChannels; ++channel)
+	//Read and Send
+	mSendToDelayBuffer.makeCopyOf(buffer);
+    for (int channel = 0; channel < mTotalNumInputChannels; ++channel)
     {
 		const float* bufferData = buffer.getReadPointer(channel);
 		const float* delayBufferData = mDelayBuffer.getReadPointer(channel);
-		getFromDelayBuffer(buffer, channel, bufferLength, delayBufferLength, delayBufferData, bufferData);
+		getFromDelayBuffer(buffer, channel, mBufferLength, mDelayBufferLength, delayBufferData, bufferData);
     }
-	//LPF24 and fill delay line
+	//LPF24
 	dsp::AudioBlock<float> block(mSendToDelayBuffer);
 	dsp::ProcessContextReplacing<float> context(block);
 	LP.process(context);
-	for (int channel = 0; channel < totalNumInputChannels; ++channel)
+	//add in nonlinear here
+	for (int channel = 0; channel < mTotalNumInputChannels; ++channel)
 	{
-		const float* bufferData = mSendToDelayBuffer.getReadPointer(channel);
-		fillDelayBuffer(channel, bufferLength, delayBufferLength, bufferData);
+		const float* bufData = mSendToDelayBuffer.getReadPointer(channel);
+		fillDelayBuffer(channel, mBufferLength, mDelayBufferLength, bufData);
 	}
-	mWritePosition += bufferLength;
-	mWritePosition %= delayBufferLength;
+	mWritePosition += mBufferLength;
+	mWritePosition %= mDelayBufferLength;
 }
 
 
 void DlayAudioProcessor::getFromDelayBuffer(AudioBuffer<float>& buffer, int channel, int bufferLength,
-	int delayBufferLength, const float* delayBufferData, const float* bufferData)
+	int mDelayBufferLength, const float* delayBufferData, const float* bufferData)
 {
-	const int readPosition = static_cast<int> (delayBufferLength + mWritePosition - (mSampleRate * delayTime / 1000))
-		% delayBufferLength;
-
-	mSendToDelayBuffer.makeCopyOf(buffer);
-	if (delayBufferLength > bufferLength + readPosition)
+	const int readPosition = static_cast<int> (mDelayBufferLength + mWritePosition - (mSampleRate * mRate / 1000))
+		% mDelayBufferLength;
+	if (mDelayBufferLength > mBufferLength + readPosition)
 	{
-		mSendToDelayBuffer.addFrom(channel, 0, delayBufferData + readPosition, bufferLength, mFeedback);
-		buffer.addFrom(channel, 0, delayBufferData + readPosition, bufferLength, mWet);
+		mSendToDelayBuffer.addFrom(channel, 0, delayBufferData + readPosition, mBufferLength, mFeedback);
+		buffer.addFrom(channel, 0, delayBufferData + readPosition, mBufferLength, mWet);
 	}
 	else
 	{
-		const int bufferRemaining = delayBufferLength - readPosition;
+		const int bufferRemaining = mDelayBufferLength - readPosition;
 		mSendToDelayBuffer.addFrom(channel, 0, delayBufferData + readPosition, bufferRemaining, mFeedback);
-		mSendToDelayBuffer.addFrom(channel, bufferRemaining, delayBufferData, bufferLength - bufferRemaining, mFeedback);
+		mSendToDelayBuffer.addFrom(channel, bufferRemaining, delayBufferData, mBufferLength - bufferRemaining, mFeedback);
 		buffer.addFrom(channel, 0, delayBufferData + readPosition, bufferRemaining, mWet);
-		buffer.addFrom(channel, bufferRemaining, delayBufferData, bufferLength - bufferRemaining, mWet);
+		buffer.addFrom(channel, bufferRemaining, delayBufferData, mBufferLength - bufferRemaining, mWet);
 	}
 }
 void DlayAudioProcessor::fillDelayBuffer(int channel, int bufferLength, int delayBufferLength, const float* bufferData)
 {
-	if (delayBufferLength > bufferLength + mWritePosition)
+	if (mDelayBufferLength > mBufferLength + mWritePosition)
 	{
-		mDelayBuffer.copyFrom(channel, mWritePosition, bufferData, bufferLength);
+		mDelayBuffer.copyFrom(channel, mWritePosition, bufferData, mBufferLength);
 	}
 	else {
-		const int bufferRemaining = delayBufferLength - mWritePosition;
+		const int bufferRemaining = mDelayBufferLength - mWritePosition;
 		mDelayBuffer.copyFrom(channel, mWritePosition, bufferData, bufferRemaining);
-		mDelayBuffer.copyFrom(channel, 0, bufferData + bufferRemaining, bufferLength - bufferRemaining);
+		mDelayBuffer.copyFrom(channel, 0, bufferData + bufferRemaining, mBufferLength - bufferRemaining);
 	}
 
 }

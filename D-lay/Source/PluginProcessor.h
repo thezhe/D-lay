@@ -41,30 +41,33 @@ public:
     //==============================================================================
     void getStateInformation (MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
-	int delayTime = 500;
+
+	//user parameters
+	int mRate = 500;
 	float mFeedback = 0.5;
 	float mWet = 0.5;
+	//clear mDelayBuffer on Slider value change
+	forcedinline void clearDelayBuffer() {
+		mDelayBuffer.clear(0, mDelayBufferLength);
+	}
 private:
-	//prepareToPlay
-	int totalNumInputChannels;
-	int	totalNumOutputChannels;
-	int bufferLength;
-	int delayBufferLength;
+	//environment variables and member buffers
+	bool mLock = true;
+	int mTotalNumInputChannels;
+	int	mTotalNumOutputChannels;
+	int mBufferLength;
+	int mDelayBufferLength;
 	int mSampleRate{ 192000 };
 	AudioBuffer<float> mDelayBuffer;
 	AudioBuffer<float> mSendToDelayBuffer;
+	//ResonantLP
+	dsp::LadderFilter<float> LP;
 	//processBlock
-	bool isActive = false;
+	int mWritePosition{ 0 };
 	void getFromDelayBuffer(AudioBuffer<float>& buffer, int channel, int bufferLength,
 		int delayBufferLength, const float* delayBufferData, const float* bufferData);
 	void fillDelayBuffer(int channel, int bufferLength, int delayBufferLength,
 		const float* bufferData);
-	int mWritePosition{ 0 };
-	//getFromDelayBuffer
-	
-	//ResonantLP
-	dsp::LadderFilter<float> LP;
-
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (DlayAudioProcessor)
 };
