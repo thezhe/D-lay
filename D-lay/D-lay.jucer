@@ -3,7 +3,7 @@
 <JUCERPROJECT id="S9Kf0V" name="D-lay" projectType="audioplug" jucerVersion="5.4.5"
               pluginFormats="buildVST3" companyName="Zhe Deng" companyEmail="thezhefromcenterville@gmail.com"
               companyWebsite="https://github.com/thezhe" version="1.0" pluginVST3Category="Delay,Fx"
-              pluginRTASCategory="16,8192" pluginAAXCategory="16,8192">
+              pluginRTASCategory="16,8192" pluginAAXCategory="16,8192" cppLanguageStandard="latest">
   <MAINGROUP id="egjQHP" name="D-lay">
     <GROUP id="{A5502606-61E8-A9F7-7BBC-79EA7CE6D592}" name="Source">
       <FILE id="Dvyd1m" name="PluginProcessor.cpp" compile="1" resource="0"

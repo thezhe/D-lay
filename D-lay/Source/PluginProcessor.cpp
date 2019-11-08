@@ -99,6 +99,13 @@ void DlayAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 	LP.setResonance(0.22f);
 	LP.setMode(dsp::LadderFilter<float>::Mode::LPF24);
 	LP.prepare(spec);
+	//Waveshaper
+	AudioBuffer<float> tanH;
+	tanH.setSize(1, 128);
+	float* tanEdit = tanH.getWritePointer(0);
+	for (int i = 0; i < 128; ++i)
+		tanEdit[i] = tanh(2*(i/128)-1);
+	ChebyshevWaveshaper->prepare(spec, tanH);
 	mLock = false;
 }
 
@@ -161,6 +168,8 @@ void DlayAudioProcessor::processBlock (AudioBuffer<float>& buffer, MidiBuffer& m
 	dsp::ProcessContextReplacing<float> context(block);
 	LP.process(context);
 	//add in nonlinear here
+	ChebyshevWaveshaper->process(mSendToDelayBuffer);
+	//==================
 	for (int channel = 0; channel < mTotalNumInputChannels; ++channel)
 	{
 		const float* bufData = mSendToDelayBuffer.getReadPointer(channel);
