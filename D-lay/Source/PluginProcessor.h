@@ -5,29 +5,11 @@
 class DynamicWaveshaper
 {
 public:
-	DynamicWaveshaper();
-	void prepare(dsp::ProcessSpec spec, const AudioBuffer<float>& dynamicWavetable) {
-		mDynamicWavetable = dynamicWavetable;
-		mBlockSize = spec.maximumBlockSize;
-		mNumChannels = spec.numChannels;
-		mHalfTableSize = mDynamicWavetable.getNumSamples() / 2;
-	}
-	forcedinline void process(AudioBuffer<float>& buffer) {
-		for (int channel = 0; channel < mNumChannels; ++channel) {
-			float* buf = buffer.getWritePointer(channel);
-			const float* test = mDynamicWavetable.getReadPointer(0);
-			for (int i = 0; i < mBlockSize; ++i) {
-				float realIndex = (buf[i] * (mHalfTableSize + 0.5)) + mHalfTableSize - 0.5;
-				auto index0 = static_cast<uint32> (realIndex);
-				auto index1 = index0 + 1;
-				auto argT = realIndex - static_cast<float> (index0);
-				//buf[i] *= std::lerp(test[index0], test[index1], argT);
-			}
-		}
-	}
+	DynamicWaveshaper(const AudioBuffer<float>& dynamicWavetable, dsp::ProcessSpec spec);
+	void process(AudioBuffer<float>& buffer);
 private:
-	AudioBuffer<float>& mDynamicWavetable;
-	uint32 mBlockSize, mNumChannels, mHalfTableSize;
+	const AudioBuffer<float>& mDynamicWavetable;
+	const uint32 mBlockSize, mNumChannels, mHalfTableSize;
 };
 
 class DlayAudioProcessor  : public AudioProcessor
@@ -91,7 +73,8 @@ private:
 	//ResonantLP
 	dsp::LadderFilter<float> LP;
 	//Waveshaper
-	DynamicWaveshaper* ChebyshevWaveshaper;
+	DynamicWaveshaper* mChebyshevWaveshaper;
+	AudioBuffer<float> tanH;
 	//processBlock
 	int mWritePosition{ 0 };
 	void getFromDelayBuffer(AudioBuffer<float>& buffer, int channel, int bufferLength,
