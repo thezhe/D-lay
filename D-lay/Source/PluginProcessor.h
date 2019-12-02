@@ -2,14 +2,38 @@
 
 #include "../JuceLibraryCode/JuceHeader.h"
 
-class DynamicWaveshaper
+//A "2D" waveshaper that loosely follows JUCE's dsp module format, does not account for intermodulation distortion (ie form slew rate limits) or inharmonic overtones, transient properties and harmonic content only as accurate as data provided
+class DynamicWaveshaper 
 {
 public:
-	DynamicWaveshaper(const AudioBuffer<float>& dynamicWavetable, dsp::ProcessSpec spec);
-	void process(AudioBuffer<float>& buffer);
+	DynamicWaveshaper(dsp::ProcessSpec spec)
+		:mBlockSize(spec.maximumBlockSize),
+		mNumChannels(spec.numChannels) {};
+	void addToTable(dsp::LookupTableTransform<float>* table) {
+		mDynamicWavetable.add(table);
+	}
+	template <typename ProcessContext>
+	forcedinline void process(const ProcessContext& context) const noexcept
+	{
+		if (context.isBypassed)
+		{
+			if (context.usesSeparateInputAndOutputBlocks())
+				context.getOutputBlock().copyFrom(context.getInputBlock());
+		}
+		else
+		{
+			for (int channel = 0; channel < mNumChannels; ++channel) {
+				for (int i = 0; i < mBlockSize; ++i) {
+					if (context.getInputBlock().getSample(channel,0)>0.1)
+						context.getOutputBlock().setSample(channel, i, mDynamicWavetable.getUnchecked(0)->processSampleUnchecked(context.getInputBlock().getSample(channel, i)));
+				}
+			}
+		}
+	}
+
 private:
-	const AudioBuffer<float>& mDynamicWavetable;
-	const uint32 mBlockSize, mNumChannels, mHalfTableSize;
+	OwnedArray<dsp::LookupTableTransform<float>> mDynamicWavetable;
+	const uint32 mBlockSize, mNumChannels;
 };
 
 class DlayAudioProcessor  : public AudioProcessor
@@ -74,7 +98,6 @@ private:
 	dsp::LadderFilter<float> LP;
 	//Waveshaper
 	DynamicWaveshaper* mChebyshevWaveshaper;
-	AudioBuffer<float> tanH;
 	//processBlock
 	int mWritePosition{ 0 };
 	void getFromDelayBuffer(AudioBuffer<float>& buffer, int channel, int bufferLength,

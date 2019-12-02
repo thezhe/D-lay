@@ -1,28 +1,6 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 
-//==============================================================================
-DynamicWaveshaper::DynamicWaveshaper(const AudioBuffer<float>& dynamicWavetable, dsp::ProcessSpec spec)
-	:mDynamicWavetable (dynamicWavetable), mBlockSize(spec.maximumBlockSize), 
-	mNumChannels(spec.numChannels), mHalfTableSize (dynamicWavetable.getNumSamples()/2)
-{
-	jassert(mDynamicWavetable.getNumChannels() > 0);
-}
-
-void DynamicWaveshaper::process(AudioBuffer<float>& buffer) {
-	auto* test = mDynamicWavetable.getReadPointer(0);
-	for (int channel = 0; channel < mNumChannels; ++channel) {
-		float* buf = buffer.getWritePointer(channel);
-		for (int i = 0; i < mBlockSize; ++i) {
-			float realIndex = buf[i]* 63.5 + 63.5;
-			auto index0 = (unsigned int) realIndex;
-			auto index1 = index0 + 1;
-			float argT = realIndex - (float) index0;
-			buf[i] = test[index0] + argT * (test[index1] - test[index0]);
-		}
-	}
-}
-//==============================================================================
 DlayAudioProcessor::DlayAudioProcessor()
 #ifndef JucePlugin_PreferredChannelConfigurations
      : AudioProcessor (BusesProperties()
@@ -121,19 +99,19 @@ void DlayAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 	LP.setMode(dsp::LadderFilter<float>::Mode::LPF24);
 	LP.prepare(spec);
 	//Waveshaper
-	
-	tanH.setSize(1, 128);
-	float* tanEdit = tanH.getWritePointer(0);
-	for (int i = 0; i < 128; ++i)
-		tanEdit[i] = tanh(2*(i/127)-1);
-	mChebyshevWaveshaper = new DynamicWaveshaper(tanH, spec);
+	mChebyshevWaveshaper = new DynamicWaveshaper(spec);
+	mChebyshevWaveshaper->addToTable(new dsp::LookupTableTransform<float>(
+		[](float x) {
+			return  x + 0.0625 * (2 * x * x - 1) + 0.25 * 0.0625 * (4 * pow(x, 3) - 3 * x);
+		},
+		-1, 1, 1024));
 	mLock = false;
 }
 
 void DlayAudioProcessor::releaseResources()
 {
 	LP.reset();
-	delete mChebyshevWaveshaper;
+
 }
 
 #ifndef JucePlugin_PreferredChannelConfigurations
@@ -189,11 +167,9 @@ void DlayAudioProcessor::processBlock (AudioBuffer<float>& buffer, MidiBuffer& m
 	dsp::AudioBlock<float> block(mSendToDelayBuffer);
 	dsp::ProcessContextReplacing<float> context(block);
 	LP.process(context);
+	mChebyshevWaveshaper->process(context);
 	//add in nonlinear here
-	mChebyshevWaveshaper->process(mSendToDelayBuffer);
 
-	//mChebyshevWaveshaper->process(mSendToDelayBuffer.getWritePointer(0));
-	//mChebyshevWaveshaper->process(mSendToDelayBuffer.getWritePointer(1));
 	//==================
 	for (int channel = 0; channel < mTotalNumInputChannels; ++channel)
 	{
