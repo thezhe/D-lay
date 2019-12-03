@@ -5,8 +5,9 @@
 DlayAudioProcessorEditor::DlayAudioProcessorEditor (DlayAudioProcessor& p)
     : AudioProcessorEditor (&p), processor (p)
 {
+	//setup GUI
     setSize (400, 300);
-	//TODO set lower bound for mRate
+
 	mRate.setSliderStyle(Slider::LinearBar);
 	mRate.setRange(0, 2000);
 	mRate.setTextBoxStyle(Slider::NoTextBox, false, 90, 0);
@@ -27,17 +28,16 @@ DlayAudioProcessorEditor::DlayAudioProcessorEditor (DlayAudioProcessor& p)
 	mWet.setPopupDisplayEnabled(true, false, this);
 	mWet.setTextValueSuffix("Wet");
 	mWet.setValue(0.8);
-
-	mRate.onValueChange = [this] { 
-		processor.mRate = mRate.getValue();
-		processor.clearDelayBuffer();
-	};
-	mFeedback.onValueChange = [this] { 
-		processor.mFeedback = mFeedback.getValue(); 
-		processor.clearDelayBuffer(); 
-	};
-	mWet.onValueChange = [this] { processor.mWet = mWet.getValue(); };
 	
+	//change processing parameters via lambdas
+	mRate.onValueChange = [this] { 
+		processor.mEchoProcessor->mRate = mRate.getValue();
+		processor.mEchoProcessor->clearDelayBuffer();
+	};
+	mFeedback.onValueChange = [this] { processor.mEchoProcessor->mFeedback = mFeedback.getValue(); };
+	mWet.onValueChange = [this] { processor.mEchoProcessor->mWet = mWet.getValue(); };
+	
+	//make visible
 	addAndMakeVisible(&mRate);
 	addAndMakeVisible(&mFeedback);
 	addAndMakeVisible(&mWet);
@@ -59,6 +59,7 @@ void DlayAudioProcessorEditor::paint (Graphics& g)
 
 void DlayAudioProcessorEditor::resized()
 {
+	//setup slider bounds
 	mRate.setBounds(40, 30, getWidth() - 60, 20);
 	mFeedback.setBounds(40, 130, getWidth() - 60, 20);
 	mWet.setBounds(40, 230, getWidth() - 60, 20);
