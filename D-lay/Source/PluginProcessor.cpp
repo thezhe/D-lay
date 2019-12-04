@@ -91,7 +91,6 @@ void DlayAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 	//ResonantLP
 	mAAfilter.setCutoffFrequencyHz(2500.0f);
 	mAAfilter.setResonance(0.3f);
-	mAAfilter.setDrive(0.0f);
 	mAAfilter.setMode(dsp::LadderFilter<float>::Mode::LPF24);
 	mAAfilter.prepare(spec);
 	//mEchoProcessor

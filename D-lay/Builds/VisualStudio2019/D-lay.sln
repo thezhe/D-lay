@@ -1,6 +1,6 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
-VisualStudioVersion = 16.0.29411.108
+VisualStudioVersion = 16.0.29503.13
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "D-lay_VST3", "D-lay_VST3.vcxproj", "{B80357B9-D98D-D174-4D71-E2D789E1B43B}"
 	ProjectSection(ProjectDependencies) = postProject
@@ -42,6 +42,6 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
-		SolutionGuid = {A0762527-7618-49DD-A427-A81D5599E9D2}
+		SolutionGuid = {B824D0CF-90B2-4255-8937-C253CB16B211}
 	EndGlobalSection
 EndGlobal
