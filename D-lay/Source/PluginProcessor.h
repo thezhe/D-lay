@@ -2,15 +2,24 @@
 
 #include "../JuceLibraryCode/JuceHeader.h"
 
-//A "2D" waveshaper that loosely follows JUCE's dsp module format, does not account for intermodulation distortion (ie form slew rate limits) or inharmonic overtones, transient properties and harmonic content only as accurate as data provided
-/*class DynamicWaveshaper 
+//A "dynamic" waveshaper that loosely follows JUCE's dsp module format, interpolates between dry signal and waveshaped signal based on envelope response
+class DynamicWaveshaper 
 {
 public:
 	DynamicWaveshaper(dsp::ProcessSpec spec)
 		:mBlockSize(spec.maximumBlockSize),
-		mNumChannels(spec.numChannels) {}
-	void addToTable(dsp::LookupTableTransform<float>* table) {
-		mDynamicWavetable.add(table);
+		mNumChannels(spec.numChannels),
+		mSampleRate(spec.sampleRate),
+		mChunkSize (128),
+		mNumChunks (mBlockSize/mChunkSize)
+	{
+		mTargetWaveshaper.initialise([](float x) {return std::tanh(x); }, -1.0f, 1.0f, 512);
+		mSideChain.setSize(mNumChannels, mBlockSize);
+		mEnvSmoother.setCutoffFrequencyHz(150.0f);
+		mEnvSmoother.setResonance(0.0f);
+		mEnvSmoother.setDrive(0.0f);
+		mEnvSmoother.setMode(dsp::LadderFilter<float>::Mode::LPF12);
+		mEnvSmoother.prepare(spec);
 	}
 	template <typename ProcessContext>
 	forcedinline void process(const ProcessContext& context) const noexcept
@@ -22,19 +31,51 @@ public:
 		}
 		else
 		{
+			//get max in chunks and smooth
+			for (int channel = 0; channel < mNumChannels; ++channel) {
+				int startChunk = 0;
+				for (int chunk = 1; chunk < mNumChunks; ++i) {
+					float maxInChunk = mSideChain.getMagnitude(startChunk, mChunkSize);
+					for (int i = startChunk; i < startChunk+mChunkSize ++j) {
+						mSideChain.setSample(channel, i, maxInChunk);
+					}
+					startChunk += mChunkSize;
+				}
+			}
+			dsp::AudioBlock<float> block(mSideChain);
+			dsp::ProcessContextReplacing context(block);
+			mEnvSmoother.process(context);
+			//convert to side chain signal
+
+			//apply amount of waveshaping proportional to sidechain signal
 			for (int channel = 0; channel < mNumChannels; ++channel) {
 				for (int i = 0; i < mBlockSize; ++i) {
-					if (context.getInputBlock().getSample(channel,0)>0.1)
-						context.getOutputBlock().setSample(channel, i, mDynamicWavetable.getUnchecked(0)->processSampleUnchecked(context.getInputBlock().getSample(channel, i)));
+					context.getOutputBlock().setSample(
+						channel,
+						i,
+						std::lerp(
+							context.getInputBlock().getSample(channel, i),
+							mTargetWaveshaper[context.getInputBlock().getSample(channel, i)],
+							mSideChain.getSample(channel, i);
+						);
+					);
 				}
 			}
 		}
 	}
-
+	float mThreshold;
 private:
-	OwnedArray<dsp::LookupTableTransform<float>> mDynamicWavetable;
+	//const enviornment variables
 	const uint32 mBlockSize, mNumChannels;
-};*/
+	const double mSampleRate;
+	const int mChunkSize, mNumChunks;
+	//LPF for envelope smoothing with minimal phase
+	dsp::LadderFilter<float> mEnvSmoother;
+	//dynamic variables
+	dsp::LookupTableTransform<float> mTargetWaveshaper;
+	AudioBuffer<float> mSideChain;
+};
+
 
 //Approximately 2 second delay line with write (fill) and read (get)
 class DelayLine {
