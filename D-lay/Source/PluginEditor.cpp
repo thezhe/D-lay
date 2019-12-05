@@ -6,7 +6,7 @@ DlayAudioProcessorEditor::DlayAudioProcessorEditor (DlayAudioProcessor& p)
     : AudioProcessorEditor (&p), processor (p)
 {
 	//setup GUI
-    setSize (400, 300);
+    setSize (400, 600);
 
 	mRate.setSliderStyle(Slider::LinearBar);
 	mRate.setRange(0, 2000);
@@ -28,6 +28,20 @@ DlayAudioProcessorEditor::DlayAudioProcessorEditor (DlayAudioProcessor& p)
 	mWet.setPopupDisplayEnabled(true, false, this);
 	mWet.setTextValueSuffix("Wet");
 	mWet.setValue(0.8);
+
+	mLPFcutoff.setSliderStyle(Slider::LinearBar);
+	mLPFcutoff.setRange(1000, 3000);
+	mLPFcutoff.setTextBoxStyle(Slider::NoTextBox, false, 90, 0);
+	mLPFcutoff.setPopupDisplayEnabled(true, false, this);
+	mLPFcutoff.setTextValueSuffix("LPF Cutoff");
+	mLPFcutoff.setValue(2500);
+
+	mLPFresonance.setSliderStyle(Slider::LinearBar);
+	mLPFresonance.setRange(0, 1);
+	mLPFresonance.setTextBoxStyle(Slider::NoTextBox, false, 90, 0);
+	mLPFresonance.setPopupDisplayEnabled(true, false, this);
+	mLPFresonance.setTextValueSuffix("LPF Resonance");
+	mLPFresonance.setValue(0.3);
 	
 	//change processing parameters via lambdas
 	mRate.onValueChange = [this] { 
@@ -36,11 +50,15 @@ DlayAudioProcessorEditor::DlayAudioProcessorEditor (DlayAudioProcessor& p)
 	};
 	mFeedback.onValueChange = [this] { processor.mEchoProcessor->mFeedback = mFeedback.getValue(); };
 	mWet.onValueChange = [this] { processor.mEchoProcessor->mWet = mWet.getValue(); };
+	mLPFcutoff.onValueChange = [this] {processor.mAAfilter.setCutoffFrequencyHz(mLPFcutoff.getValue()); };
+	mLPFresonance.onValueChange = [this] {processor.mAAfilter.setResonance(mLPFresonance.getValue()); };
 	
 	//make visible
 	addAndMakeVisible(&mRate);
 	addAndMakeVisible(&mFeedback);
 	addAndMakeVisible(&mWet);
+	addAndMakeVisible(&mLPFcutoff);
+	addAndMakeVisible(&mLPFresonance);
 }
 
 
@@ -63,4 +81,6 @@ void DlayAudioProcessorEditor::resized()
 	mRate.setBounds(40, 30, getWidth() - 60, 20);
 	mFeedback.setBounds(40, 130, getWidth() - 60, 20);
 	mWet.setBounds(40, 230, getWidth() - 60, 20);
+	mLPFcutoff.setBounds(40, 330, getWidth() - 60, 20);
+	mLPFresonance.setBounds(40, 430, getWidth() - 60, 20);
 }

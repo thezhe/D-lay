@@ -88,11 +88,13 @@ void DlayAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 	mTotalNumInputChannels = getTotalNumInputChannels();
 	mTotalNumOutputChannels = getTotalNumOutputChannels();
 	dsp::ProcessSpec spec{ sampleRate, static_cast<uint32>(samplesPerBlock), static_cast<uint32>(mTotalNumInputChannels) };
-	//ResonantLP
+	//mAAfilter
 	mAAfilter.setCutoffFrequencyHz(2500.0f);
 	mAAfilter.setResonance(0.3f);
 	mAAfilter.setMode(dsp::LadderFilter<float>::Mode::LPF24);
 	mAAfilter.prepare(spec);
+	//mDynamicWaveshaper
+	mDynamicWaveshaper = new DynamicWaveshaper(spec);
 	//mEchoProcessor
 	mEchoProcessor = new DelayLine(spec);
 	mLock = false;
@@ -102,6 +104,7 @@ void DlayAudioProcessor::releaseResources()
 {
 	mAAfilter.reset();
 	delete mEchoProcessor;
+	delete mDynamicWaveshaper;
 }
 
 #ifndef JucePlugin_PreferredChannelConfigurations
@@ -148,6 +151,7 @@ void DlayAudioProcessor::processBlock (AudioBuffer<float>& buffer, MidiBuffer& m
 	mEchoProcessor->fillFromDelayBuffer(buffer);
 	dsp::ProcessContextReplacing<float> writeBlock(mEchoProcessor->mWriteBlock);
 	mAAfilter.process(writeBlock);
+	mDynamicWaveshaper->process(writeBlock);
 	mEchoProcessor->getFromDelayBuffer(buffer);
 
 	//Read and Send

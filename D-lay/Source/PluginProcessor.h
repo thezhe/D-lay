@@ -13,52 +13,58 @@ public:
 		mChunkSize (128),
 		mNumChunks (mBlockSize/mChunkSize)
 	{
-		mTargetWaveshaper.initialise([](float x) {return std::tanh(x); }, -1.0f, 1.0f, 512);
+		mTargetWaveshaper.initialise([](float x) {return std::tanh(25*x); }, -1.0f, 1.0f, 512);
 		mSideChain.setSize(mNumChannels, mBlockSize);
 		mEnvSmoother.setCutoffFrequencyHz(150.0f);
-		mEnvSmoother.setResonance(0.0f);
-		mEnvSmoother.setDrive(0.0f);
 		mEnvSmoother.setMode(dsp::LadderFilter<float>::Mode::LPF12);
 		mEnvSmoother.prepare(spec);
 	}
 	template <typename ProcessContext>
-	forcedinline void process(const ProcessContext& context) const noexcept
+	forcedinline void process(const ProcessContext& context) noexcept
 	{
+		const auto& inputBlock = context.getInputBlock();
+		auto& outputBlock = context.getOutputBlock();
 		if (context.isBypassed)
 		{
 			if (context.usesSeparateInputAndOutputBlocks())
-				context.getOutputBlock().copyFrom(context.getInputBlock());
+				outputBlock.copyFrom(inputBlock);
 		}
 		else
 		{
 			//get max in chunks and smooth
 			for (int channel = 0; channel < mNumChannels; ++channel) {
 				int startChunk = 0;
-				for (int chunk = 1; chunk < mNumChunks; ++i) {
-					float maxInChunk = mSideChain.getMagnitude(startChunk, mChunkSize);
-					for (int i = startChunk; i < startChunk+mChunkSize ++j) {
+				for (int chunk = 1; chunk < mNumChunks; ++chunk) {
+					float maxInChunk = 0;
+					for (int c = startChunk; c < startChunk + mChunkSize; ++c) {
+						if (abs(inputBlock.getChannelPointer(channel)[c]) > maxInChunk)
+							maxInChunk = abs(inputBlock.getChannelPointer(channel)[c]);
+					}
+					for (int i = startChunk; i < startChunk + mChunkSize; ++i) {
 						mSideChain.setSample(channel, i, maxInChunk);
 					}
 					startChunk += mChunkSize;
 				}
 			}
 			dsp::AudioBlock<float> block(mSideChain);
-			dsp::ProcessContextReplacing context(block);
+			dsp::ProcessContextReplacing<float> context(block);
 			mEnvSmoother.process(context);
 			//convert to side chain signal
-
+			/*
+			
+			
+			TODO
+			
+			*/
 			//apply amount of waveshaping proportional to sidechain signal
 			for (int channel = 0; channel < mNumChannels; ++channel) {
 				for (int i = 0; i < mBlockSize; ++i) {
-					context.getOutputBlock().setSample(
-						channel,
-						i,
-						std::lerp(
-							context.getInputBlock().getSample(channel, i),
-							mTargetWaveshaper[context.getInputBlock().getSample(channel, i)],
-							mSideChain.getSample(channel, i);
+					
+					outputBlock.getChannelPointer(channel)[i] = std::lerp(
+							inputBlock.getChannelPointer(channel)[i],
+							mTargetWaveshaper.processSampleUnchecked(inputBlock.getChannelPointer(channel)[i]),
+							mSideChain.getSample(channel, i)
 						);
-					);
 				}
 			}
 		}
@@ -181,6 +187,8 @@ public:
 	//==============================================================================
 	//DelayLine
 	DelayLine* mEchoProcessor;
+	//DynamicWaveshaper
+	DynamicWaveshaper* mDynamicWaveshaper;
 	//ResonantLP to simulate anti-aliasing filter and reconstruction filter of BBD delays
 	dsp::LadderFilter<float> mAAfilter;
 private:
@@ -189,8 +197,7 @@ private:
 	int mTotalNumInputChannels;
 	int	mTotalNumOutputChannels;
 
-	//Waveshaper
-	//DynamicWaveshaper* mChebyshevWaveshaper;
+	
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (DlayAudioProcessor)
 };
