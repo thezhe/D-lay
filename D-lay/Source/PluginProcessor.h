@@ -2,6 +2,7 @@
 
 #include "../JuceLibraryCode/JuceHeader.h"
 
+//Note: some methods are in header file to force inline
 //A "dynamic" waveshaper that loosely follows JUCE's dsp module format, interpolates between dry signal and waveshaped signal based on envelope response
 class DynamicWaveshaper 
 {
@@ -13,14 +14,25 @@ public:
 		mChunkSize (128),
 		mNumChunks (mBlockSize/mChunkSize)
 	{
-		mTargetWaveshaper.initialise([](float x) {return std::tanh(25*x); }, -1.0f, 1.0f, 512);
+		//set up y[n-1] for the IIR filtering of envelope of each channel
+		mLastSample = new float[mNumChannels];
+		for (int channel = 0; channel < mNumChannels; ++channel) {
+			mLastSample[channel] = 0;
+		}
+		mTargetWaveshaper.initialise([](float x) {return 0.2*std::tanh(25*x); }, -1.0f, 1.0f, 512);
 		mSideChain.setSize(mNumChannels, mBlockSize);
 		mEnvSmoother.setCutoffFrequencyHz(150.0f);
 		mEnvSmoother.setMode(dsp::LadderFilter<float>::Mode::LPF12);
 		mEnvSmoother.prepare(spec);
 	}
+	//take in threshold in dB and store in mThreshold as gain value
+	void setThreshold(float threshold) noexcept;
+	//take in attack time in ms and convert to IIR coefficients
+	void setAttack(float attack) noexcept;
+	//take in release time in ms and convert to IIR coefficients
+	void setRelease(float release) noexcept;
 	template <typename ProcessContext>
-	forcedinline void process(const ProcessContext& context) noexcept
+	void process(const ProcessContext& context) noexcept
 	{
 		const auto& inputBlock = context.getInputBlock();
 		auto& outputBlock = context.getOutputBlock();
@@ -49,13 +61,21 @@ public:
 			dsp::AudioBlock<float> block(mSideChain);
 			dsp::ProcessContextReplacing<float> context(block);
 			mEnvSmoother.process(context);
-			//convert to side chain signal
-			/*
-			
-			
-			TODO
-			
-			*/
+			//convert to square wave using threshold and use the step response of a one pole low pass filter (IIR) to apply attack and release parameters
+			for (int channel = 0; channel < mNumChannels; ++channel) {
+				auto mSideChainData = mSideChain.getWritePointer(channel);
+				for (int i = 0; i < mBlockSize; ++i) {
+					if (mSideChainData[i] > mThreshold) { mSideChainData[i] = 1; }
+					else { mSideChainData[i] = 0; }
+					if (mSideChainData[i]>mLastSample[channel]){ 
+						mSideChainData[i] = mAttackCoeff * mLastSample[channel] + mOneMinusAttackCoeff * mSideChainData[i];
+					}
+					else {
+						mSideChainData[i] = mReleaseCoeff * mLastSample[channel];
+					}
+					mLastSample[channel] = mSideChainData[i];
+				}
+			}
 			//apply amount of waveshaping proportional to sidechain signal
 			for (int channel = 0; channel < mNumChannels; ++channel) {
 				for (int i = 0; i < mBlockSize; ++i) {
@@ -69,8 +89,13 @@ public:
 			}
 		}
 	}
-	float mThreshold;
+	
 private:
+	//internal parameters modified through public methods
+	float mThreshold;
+	float mAttackCoeff;
+	float mOneMinusAttackCoeff;
+	float mReleaseCoeff;
 	//const enviornment variables
 	const uint32 mBlockSize, mNumChannels;
 	const double mSampleRate;
@@ -80,6 +105,7 @@ private:
 	//dynamic variables
 	dsp::LookupTableTransform<float> mTargetWaveshaper;
 	AudioBuffer<float> mSideChain;
+	float* mLastSample;
 };
 
 
@@ -132,9 +158,9 @@ public:
 		mWritePosition %= mDelayBufferLength;
 	}
 	//user parameters
-	int mRate = 500;
-	float mFeedback = 0.8;
-	float mWet = 0.8;
+	int mRate;
+	float mFeedback;
+	float mWet;
 	//clear mDelayBuffer on Slider value change
 	forcedinline void clearDelayBuffer() {
 		mDelayBuffer.clear(0, mDelayBufferLength);

@@ -6,7 +6,7 @@ DlayAudioProcessorEditor::DlayAudioProcessorEditor (DlayAudioProcessor& p)
     : AudioProcessorEditor (&p), processor (p)
 {
 	//setup GUI
-    setSize (400, 600);
+    setSize (400, 800);
 
 	mRate.setSliderStyle(Slider::LinearBar);
 	mRate.setRange(0, 2000);
@@ -42,6 +42,27 @@ DlayAudioProcessorEditor::DlayAudioProcessorEditor (DlayAudioProcessor& p)
 	mLPFresonance.setPopupDisplayEnabled(true, false, this);
 	mLPFresonance.setTextValueSuffix("LPF Resonance");
 	mLPFresonance.setValue(0.3);
+
+	mThreshold.setSliderStyle(Slider::LinearBar);
+	mThreshold.setRange(-100, 0);
+	mThreshold.setTextBoxStyle(Slider::NoTextBox, false, 90, 0);
+	mThreshold.setPopupDisplayEnabled(true, false, this);
+	mThreshold.setTextValueSuffix("Threshold");
+	mThreshold.setValue(-10);
+
+	mAttack.setSliderStyle(Slider::LinearBar);
+	mAttack.setRange(0, 1000);
+	mAttack.setTextBoxStyle(Slider::NoTextBox, false, 90, 0);
+	mAttack.setPopupDisplayEnabled(true, false, this);
+	mAttack.setTextValueSuffix("Attack");
+	mAttack.setValue(100);
+
+	mRelease.setSliderStyle(Slider::LinearBar);
+	mRelease.setRange(0, 1000);
+	mRelease.setTextBoxStyle(Slider::NoTextBox, false, 90, 0);
+	mRelease.setPopupDisplayEnabled(true, false, this);
+	mRelease.setTextValueSuffix("Release");
+	mRelease.setValue(200);
 	
 	//change processing parameters via lambdas
 	mRate.onValueChange = [this] { 
@@ -52,13 +73,18 @@ DlayAudioProcessorEditor::DlayAudioProcessorEditor (DlayAudioProcessor& p)
 	mWet.onValueChange = [this] { processor.mEchoProcessor->mWet = mWet.getValue(); };
 	mLPFcutoff.onValueChange = [this] {processor.mAAfilter.setCutoffFrequencyHz(mLPFcutoff.getValue()); };
 	mLPFresonance.onValueChange = [this] {processor.mAAfilter.setResonance(mLPFresonance.getValue()); };
-	
+	mThreshold.onValueChange = [this] {processor.mDynamicWaveshaper->setThreshold(mThreshold.getValue()); };
+	mAttack.onValueChange = [this] {processor.mDynamicWaveshaper->setAttack(mAttack.getValue()); };
+	mRelease.onValueChange = [this] {processor.mDynamicWaveshaper->setRelease(mRelease.getValue()); };
 	//make visible
 	addAndMakeVisible(&mRate);
 	addAndMakeVisible(&mFeedback);
 	addAndMakeVisible(&mWet);
 	addAndMakeVisible(&mLPFcutoff);
 	addAndMakeVisible(&mLPFresonance);
+	addAndMakeVisible(&mThreshold);
+	addAndMakeVisible(&mAttack);
+	addAndMakeVisible(&mRelease);
 }
 
 
@@ -83,4 +109,7 @@ void DlayAudioProcessorEditor::resized()
 	mWet.setBounds(40, 230, getWidth() - 60, 20);
 	mLPFcutoff.setBounds(40, 330, getWidth() - 60, 20);
 	mLPFresonance.setBounds(40, 430, getWidth() - 60, 20);
+	mThreshold.setBounds(40, 530, getWidth() - 60, 20);
+	mAttack.setBounds(40, 630, getWidth() - 60, 20);
+	mRelease.setBounds(40, 730, getWidth() - 60, 20);
 }

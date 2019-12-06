@@ -18,7 +18,7 @@ private:
     DlayAudioProcessor& processor;
 	
 	//user parameters
-	Slider mRate, mFeedback, mWet, mLPFcutoff, mLPFresonance;
+	Slider mRate, mFeedback, mWet, mLPFcutoff, mLPFresonance, mThreshold, mAttack, mRelease;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (DlayAudioProcessorEditor)
 };
