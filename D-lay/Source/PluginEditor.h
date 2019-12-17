@@ -18,7 +18,12 @@ private:
     DlayAudioProcessor& processor;
 	
 	//user parameters
-	Slider mRate, mFeedback, mWet;
+	Slider mRate, mFeedback, mWet, mLPFcutoff, mLPFresonance, mThreshold, mAttack, mRelease;
+	ToggleButton mBypass;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (DlayAudioProcessorEditor)
 };
+
+//TODO make user parameters linear smoothed
+//TODO dB mWet
+//TODO add sliders for mAAfilter

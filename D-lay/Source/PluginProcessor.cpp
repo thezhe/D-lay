@@ -1,7 +1,18 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 
-//==============================================================================
+
+void DynamicWaveshaper::setThreshold(float threshold) noexcept {
+	mThreshold = Decibels::decibelsToGain(threshold);
+}
+void DynamicWaveshaper::setAttack(float attack) noexcept {
+	mAttackCoeff = exp(-1000 / (attack * mSampleRate));
+	mOneMinusAttackCoeff = 1 - mAttackCoeff;
+}
+void DynamicWaveshaper::setRelease(float release) noexcept{
+	mReleaseCoeff = exp(-1000 / (release * mSampleRate));
+}
+
 DlayAudioProcessor::DlayAudioProcessor()
 #ifndef JucePlugin_PreferredChannelConfigurations
      : AudioProcessor (BusesProperties()
@@ -88,23 +99,24 @@ void DlayAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 	//environment variables and member buffers
 	mTotalNumInputChannels = getTotalNumInputChannels();
 	mTotalNumOutputChannels = getTotalNumOutputChannels();
-	mBufferLength = samplesPerBlock;
-	mDelayBufferLength = 2 * (sampleRate + samplesPerBlock);
-	mSampleRate = sampleRate;
-	mDelayBuffer.setSize(mTotalNumInputChannels, mDelayBufferLength);
-	mSendToDelayBuffer.setSize(mTotalNumInputChannels, mBufferLength);
-	//ResonantLP
-	dsp::ProcessSpec spec{ sampleRate, static_cast<uint32>(mBufferLength), static_cast<uint32>(mTotalNumInputChannels) };
-	LP.setCutoffFrequencyHz(3000.0f);
-	LP.setResonance(0.22f);
-	LP.setMode(dsp::LadderFilter<float>::Mode::LPF24);
-	LP.prepare(spec);
+	dsp::ProcessSpec spec{ sampleRate, static_cast<uint32>(samplesPerBlock), static_cast<uint32>(mTotalNumInputChannels) };
+	//mAAfilter
+	mAAfilter.setCutoffFrequencyHz(2500.0f);
+	mAAfilter.setResonance(0.3f);
+	mAAfilter.setMode(dsp::LadderFilter<float>::Mode::LPF24);
+	mAAfilter.prepare(spec);
+	//mDynamicWaveshaper
+	mDynamicWaveshaper = new DynamicWaveshaper(spec);
+	//mEchoProcessor
+	mEchoProcessor = new DelayLine(spec);
 	mLock = false;
 }
 
 void DlayAudioProcessor::releaseResources()
 {
-	LP.reset();
+	mAAfilter.reset();
+	delete mEchoProcessor;
+	delete mDynamicWaveshaper;
 }
 
 #ifndef JucePlugin_PreferredChannelConfigurations
@@ -148,61 +160,15 @@ void DlayAudioProcessor::processBlock (AudioBuffer<float>& buffer, MidiBuffer& m
 	for (auto i = mTotalNumInputChannels; i < mTotalNumOutputChannels; ++i)
 		buffer.clear(i, 0, buffer.getNumSamples());
 	//====================================================================processing
-	//Read and Send
-	mSendToDelayBuffer.makeCopyOf(buffer);
-    for (int channel = 0; channel < mTotalNumInputChannels; ++channel)
-    {
-		const float* bufferData = buffer.getReadPointer(channel);
-		const float* delayBufferData = mDelayBuffer.getReadPointer(channel);
-		getFromDelayBuffer(buffer, channel, mBufferLength, mDelayBufferLength, delayBufferData, bufferData);
-    }
-	//LPF24
-	dsp::AudioBlock<float> block(mSendToDelayBuffer);
-	dsp::ProcessContextReplacing<float> context(block);
-	LP.process(context);
-	//add in nonlinear here
-	for (int channel = 0; channel < mTotalNumInputChannels; ++channel)
-	{
-		const float* bufData = mSendToDelayBuffer.getReadPointer(channel);
-		fillDelayBuffer(channel, mBufferLength, mDelayBufferLength, bufData);
+	mEchoProcessor->fillFromDelayBuffer(buffer);
+	if (!mBypass) {
+		dsp::ProcessContextReplacing<float> writeBlock(mEchoProcessor->mWriteBlock);
+		mAAfilter.process(writeBlock);
+		mDynamicWaveshaper->process(writeBlock);
 	}
-	mWritePosition += mBufferLength;
-	mWritePosition %= mDelayBufferLength;
+	mEchoProcessor->getFromDelayBuffer(buffer);
 }
 
-
-void DlayAudioProcessor::getFromDelayBuffer(AudioBuffer<float>& buffer, int channel, int bufferLength,
-	int mDelayBufferLength, const float* delayBufferData, const float* bufferData)
-{
-	const int readPosition = static_cast<int> (mDelayBufferLength + mWritePosition - (mSampleRate * mRate / 1000))
-		% mDelayBufferLength;
-	if (mDelayBufferLength > mBufferLength + readPosition)
-	{
-		mSendToDelayBuffer.addFrom(channel, 0, delayBufferData + readPosition, mBufferLength, mFeedback);
-		buffer.addFrom(channel, 0, delayBufferData + readPosition, mBufferLength, mWet);
-	}
-	else
-	{
-		const int bufferRemaining = mDelayBufferLength - readPosition;
-		mSendToDelayBuffer.addFrom(channel, 0, delayBufferData + readPosition, bufferRemaining, mFeedback);
-		mSendToDelayBuffer.addFrom(channel, bufferRemaining, delayBufferData, mBufferLength - bufferRemaining, mFeedback);
-		buffer.addFrom(channel, 0, delayBufferData + readPosition, bufferRemaining, mWet);
-		buffer.addFrom(channel, bufferRemaining, delayBufferData, mBufferLength - bufferRemaining, mWet);
-	}
-}
-void DlayAudioProcessor::fillDelayBuffer(int channel, int bufferLength, int delayBufferLength, const float* bufferData)
-{
-	if (mDelayBufferLength > mBufferLength + mWritePosition)
-	{
-		mDelayBuffer.copyFrom(channel, mWritePosition, bufferData, mBufferLength);
-	}
-	else {
-		const int bufferRemaining = mDelayBufferLength - mWritePosition;
-		mDelayBuffer.copyFrom(channel, mWritePosition, bufferData, bufferRemaining);
-		mDelayBuffer.copyFrom(channel, 0, bufferData + bufferRemaining, mBufferLength - bufferRemaining);
-	}
-
-}
 
 
 //==============================================================================
