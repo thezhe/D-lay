@@ -161,22 +161,12 @@ void DlayAudioProcessor::processBlock (AudioBuffer<float>& buffer, MidiBuffer& m
 		buffer.clear(i, 0, buffer.getNumSamples());
 	//====================================================================processing
 	mEchoProcessor->fillFromDelayBuffer(buffer);
-	dsp::ProcessContextReplacing<float> writeBlock(mEchoProcessor->mWriteBlock);
-	mAAfilter.process(writeBlock);
-	mDynamicWaveshaper->process(writeBlock);
+	if (!mBypass) {
+		dsp::ProcessContextReplacing<float> writeBlock(mEchoProcessor->mWriteBlock);
+		mAAfilter.process(writeBlock);
+		mDynamicWaveshaper->process(writeBlock);
+	}
 	mEchoProcessor->getFromDelayBuffer(buffer);
-
-	//Read and Send
-
-	//LPF24
-	/*dsp::AudioBlock<float> block(mSendToDelayBuffer);
-	dsp::ProcessContextReplacing<float> context(block);
-	LP.process(context);
-	mChebyshevWaveshaper->process(context);*/
-	//add in nonlinear here
-
-	//==================
-	
 }
 
 

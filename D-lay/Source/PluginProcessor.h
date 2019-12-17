@@ -19,7 +19,15 @@ public:
 		for (int channel = 0; channel < mNumChannels; ++channel) {
 			mLastSample[channel] = 0;
 		}
-		mTargetWaveshaper.initialise([](float x) {return 0.2*std::tanh(25*x); }, -1.0f, 1.0f, 512);
+		//use exaggerated waveshaper for testing:
+		//mTargetWaveshaper.initialise([](float x) {return 0.2*std::tanh(25*x); }, -1.0f, 1.0f, 512);
+		/*mTargetWaveshaper.initialise(
+			[](float x) { return x - ((x * x) / 8) - (pow(x, 3) / 18) + 0.125; },
+			-1.0f,
+			1.0f,
+			512
+		);*/
+		mTargetWaveshaper.initialise([](float x) {return tanh(x); }, -1.0f, 1.0f, 512);
 		mSideChain.setSize(mNumChannels, mBlockSize);
 		mEnvSmoother.setCutoffFrequencyHz(150.0f);
 		mEnvSmoother.setMode(dsp::LadderFilter<float>::Mode::LPF12);
@@ -217,13 +225,16 @@ public:
 	DynamicWaveshaper* mDynamicWaveshaper;
 	//ResonantLP to simulate anti-aliasing filter and reconstruction filter of BBD delays
 	dsp::LadderFilter<float> mAAfilter;
+	//bypass ResonantLP and DynamicWaveshaper
+	void bypassBBD() {
+		mBypass = !mBypass;
+	}
 private:
 	//environment variables and member buffers
 	bool mLock = true;
+	bool mBypass = false;
 	int mTotalNumInputChannels;
 	int	mTotalNumOutputChannels;
-
-	
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (DlayAudioProcessor)
 };

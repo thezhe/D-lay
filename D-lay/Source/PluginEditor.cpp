@@ -6,7 +6,7 @@ DlayAudioProcessorEditor::DlayAudioProcessorEditor (DlayAudioProcessor& p)
     : AudioProcessorEditor (&p), processor (p)
 {
 	//setup GUI
-    setSize (400, 800);
+    setSize (400, 620);
 
 	mRate.setSliderStyle(Slider::LinearBar);
 	mRate.setRange(0, 2000);
@@ -76,6 +76,7 @@ DlayAudioProcessorEditor::DlayAudioProcessorEditor (DlayAudioProcessor& p)
 	mThreshold.onValueChange = [this] {processor.mDynamicWaveshaper->setThreshold(mThreshold.getValue()); };
 	mAttack.onValueChange = [this] {processor.mDynamicWaveshaper->setAttack(mAttack.getValue()); };
 	mRelease.onValueChange = [this] {processor.mDynamicWaveshaper->setRelease(mRelease.getValue()); };
+	mBypass.onClick = [this] {processor.bypassBBD(); };
 	//make visible
 	addAndMakeVisible(&mRate);
 	addAndMakeVisible(&mFeedback);
@@ -85,6 +86,7 @@ DlayAudioProcessorEditor::DlayAudioProcessorEditor (DlayAudioProcessor& p)
 	addAndMakeVisible(&mThreshold);
 	addAndMakeVisible(&mAttack);
 	addAndMakeVisible(&mRelease);
+	addAndMakeVisible(&mBypass);
 }
 
 
@@ -105,11 +107,12 @@ void DlayAudioProcessorEditor::resized()
 {
 	//setup slider bounds
 	mRate.setBounds(40, 30, getWidth() - 60, 20);
-	mFeedback.setBounds(40, 130, getWidth() - 60, 20);
-	mWet.setBounds(40, 230, getWidth() - 60, 20);
-	mLPFcutoff.setBounds(40, 330, getWidth() - 60, 20);
-	mLPFresonance.setBounds(40, 430, getWidth() - 60, 20);
-	mThreshold.setBounds(40, 530, getWidth() - 60, 20);
-	mAttack.setBounds(40, 630, getWidth() - 60, 20);
-	mRelease.setBounds(40, 730, getWidth() - 60, 20);
+	mFeedback.setBounds(40, 100, getWidth() - 60, 20);
+	mWet.setBounds(40, 170, getWidth() - 60, 20);
+	mLPFcutoff.setBounds(40, 240, getWidth() - 60, 20);
+	mLPFresonance.setBounds(40, 310, getWidth() - 60, 20);
+	mThreshold.setBounds(40, 380, getWidth() - 60, 20);
+	mAttack.setBounds(40, 450, getWidth() - 60, 20);
+	mRelease.setBounds(40, 520, getWidth() - 60, 20);
+	mBypass.setBounds(40, 590, 20, 20);
 }
