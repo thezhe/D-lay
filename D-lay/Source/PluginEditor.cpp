@@ -8,28 +8,34 @@ DlayAudioProcessorEditor::DlayAudioProcessorEditor (DlayAudioProcessor& p)
 	
 	//setup GUI
     setSize (400, 620);
-	/*
+
+	//make visible
+
+	addAndMakeVisible(mRate);
+	addAndMakeVisible(mFeedback);
+	addAndMakeVisible(mWet);
+
 	mRate.setSliderStyle(Slider::LinearBar);
-	mRate.setRange(0, 2000);
+	mRate.setRange(0, 1000);
 	mRate.setTextBoxStyle(Slider::NoTextBox, false, 90, 0);
 	mRate.setPopupDisplayEnabled(true, false, this);
 	mRate.setTextValueSuffix("Rate");
 	mRate.setValue(500);
 
 	mFeedback.setSliderStyle(Slider::LinearBar);
-	mFeedback.setRange(0, 1);
+	mFeedback.setRange(-40.0f, 0.0f);
 	mFeedback.setTextBoxStyle(Slider::NoTextBox, false, 90, 0);
 	mFeedback.setPopupDisplayEnabled(true, false, this);
 	mFeedback.setTextValueSuffix("Feedback");
-	mFeedback.setValue(0.8);
+	mFeedback.setValue(-20.0f);
 
 	mWet.setSliderStyle(Slider::LinearBar);
-	mWet.setRange(0, 1);
+	mWet.setRange(0, 100);
 	mWet.setTextBoxStyle(Slider::NoTextBox, false, 90, 0);
 	mWet.setPopupDisplayEnabled(true, false, this);
 	mWet.setTextValueSuffix("Wet");
-	mWet.setValue(0.8);
-	*/
+	mWet.setValue(50);
+
 	/*
 	mLPFcutoff.setSliderStyle(Slider::LinearBar);
 	mLPFcutoff.setRange(1000, 3000);
@@ -67,22 +73,19 @@ DlayAudioProcessorEditor::DlayAudioProcessorEditor (DlayAudioProcessor& p)
 	mRelease.setValue(200);
 	*/
 	//change processing parameters via lambdas
-	//mRate.onValueChange = [this] { processor.mEchoProcessor.setRate(mRate.getValue());};
-	//mFeedback.onValueChange = [this] { processor.mEchoProcessor.setFeedback (mFeedback.getValue()); };
-	//mWet.onValueChange = [this] { processor.mEchoProcessor.setWet( mWet.getValue()); };
-	/*mLPFcutoff.onValueChange = [this] {processor.mAAfilter.setCutoffFrequencyHz(mLPFcutoff.getValue()); };
+	mRate.onValueChange = [this] { processor.mEchoProcessor.setRate(mRate.getValue());};
+	mFeedback.onValueChange = [this] { processor.mEchoProcessor.setFeedback (mFeedback.getValue()); };
+	mWet.onValueChange = [this] { processor.mEchoProcessor.setWet( mWet.getValue()); };
+	/*
+	mLPFcutoff.onValueChange = [this] {processor.mAAfilter.setCutoffFrequencyHz(mLPFcutoff.getValue()); };
 	mLPFresonance.onValueChange = [this] {processor.mAAfilter.setResonance(mLPFresonance.getValue()); };
 	mThreshold.onValueChange = [this] {processor.mDynamicWaveshaper->setThreshold(mThreshold.getValue()); };
 	mAttack.onValueChange = [this] {processor.mDynamicWaveshaper->setAttack(mAttack.getValue()); };
 	mRelease.onValueChange = [this] {processor.mDynamicWaveshaper->setRelease(mRelease.getValue()); };
 	mBypass.onClick = [this] {processor.bypassBBD(); };
 	*/
-	//make visible
-	/*
-	addAndMakeVisible(mRate);
-	addAndMakeVisible(mFeedback);
-	addAndMakeVisible(mWet);
-	*/
+	
+
 	/*
 	addAndMakeVisible(&mLPFcutoff);
 	addAndMakeVisible(&mLPFresonance);
@@ -110,11 +113,11 @@ void DlayAudioProcessorEditor::paint (Graphics& g)
 void DlayAudioProcessorEditor::resized()
 {
 	//setup slider bounds
-	/*
+
 	mRate.setBounds(40, 30, getWidth() - 60, 20);
 	mFeedback.setBounds(40, 100, getWidth() - 60, 20);
 	mWet.setBounds(40, 170, getWidth() - 60, 20);
-	*/
+
 	/*
 	mLPFcutoff.setBounds(40, 240, getWidth() - 60, 20);
 	mLPFresonance.setBounds(40, 310, getWidth() - 60, 20);

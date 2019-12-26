@@ -17,24 +17,34 @@ void DelayLine::prepare(const dsp::ProcessSpec spec)
 	mDelayBufferLength = (mSampleRate + mBlockSize) - (mSampleRate % mBlockSize); //make sure mDelayBuffer is aligned to mBlockSize
 	mDelayBuffer.setSize(mNumChannels, mDelayBufferLength);
 	mDelayBufferBlock = dsp::AudioBlock<float>(mDelayBuffer);
+	//initialize smoothers
+	initSmoothers(0.01);
 }
 
 void DelayLine::setRate(float msRate) noexcept
 {
-	mRate = static_cast<int>((msRate / 1000) * mSampleRate);
+	mRate = (msRate / 1000.0f) * static_cast<float>(mSampleRate);
 }
 
 void DelayLine::setFeedback(float dbFeedback) noexcept
 {
-	mFeedback = Decibels::decibelsToGain(dbFeedback);
+	mFeedbackSmoothed.setTargetValue(Decibels::decibelsToGain(dbFeedback));
 }
 
 void DelayLine::setWet(int percentWet) noexcept
 {
-	mWet = static_cast<float> (percentWet) / 100;
+	mWetSmoothed.setTargetValue (static_cast<float> (percentWet) / 100.0f);
 }
 
 void DelayLine::clearDelayBuffer() noexcept 
 {
 	mDelayBuffer.clear(0, mDelayBufferLength);
+}
+
+void DelayLine::initSmoothers(double rampTime) 
+{
+	mFeedbackSmoothed.reset(mSampleRate, rampTime);
+	mFeedbackSmoothed.setCurrentAndTargetValue(mFeedback);
+	mWetSmoothed.reset(mSampleRate, rampTime);
+	mWetSmoothed.setCurrentAndTargetValue(mWet);
 }

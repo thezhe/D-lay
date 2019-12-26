@@ -145,11 +145,11 @@ void DlayAudioProcessor::processBlock (AudioBuffer<float>& buffer, MidiBuffer& m
 		buffer.clear(i, 0, buffer.getNumSamples());
 	//====================================================================processing
 	mEchoProcessor.fillDelayBuffer(buffer);
-	/*if (!mBypass) {
-		dsp::ProcessContextReplacing<float> writeBlock(mEchoProcessor->mWriteBlock);
-		mAAfilter.process(writeBlock);
-		mDynamicWaveshaper->process(writeBlock);
-	}*/
+
+		//dsp::ProcessContextReplacing<float> writeBlock(mEchoProcessor->mWriteBlock);
+		//mAAfilter.process(writeBlock);
+		//mDynamicWaveshaper->process(writeBlock);
+
 	mEchoProcessor.getFromDelayBuffer(buffer);
 }
 
