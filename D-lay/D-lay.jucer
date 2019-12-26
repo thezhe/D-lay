@@ -5,6 +5,14 @@
               companyWebsite="https://github.com/thezhe" version="1.0" pluginVST3Category="Delay,Fx"
               pluginRTASCategory="16,8192" pluginAAXCategory="16,8192" cppLanguageStandard="latest">
   <MAINGROUP id="egjQHP" name="D-lay">
+    <GROUP id="{C76CF50A-56EC-3136-84D5-100F8885D83E}" name="Processors">
+      <FILE id="aVz1et" name="DynamicWaveshaper.cpp" compile="1" resource="0"
+            file="Source/DynamicWaveshaper.cpp"/>
+      <FILE id="eAc8AX" name="DynamicWaveshaper.h" compile="0" resource="0"
+            file="Source/DynamicWaveshaper.h"/>
+      <FILE id="nLTAdF" name="DelayLine.cpp" compile="1" resource="0" file="Source/DelayLine.cpp"/>
+      <FILE id="O3EfrR" name="DelayLine.h" compile="0" resource="0" file="Source/DelayLine.h"/>
+    </GROUP>
     <GROUP id="{A5502606-61E8-A9F7-7BBC-79EA7CE6D592}" name="Source">
       <FILE id="Dvyd1m" name="PluginProcessor.cpp" compile="1" resource="0"
             file="Source/PluginProcessor.cpp"/>
@@ -18,8 +26,6 @@
   <EXPORTFORMATS>
     <VS2019 targetFolder="Builds/VisualStudio2019">
       <CONFIGURATIONS>
-        <CONFIGURATION isDebug="1" name="Debug" optimisation="4" linkTimeOptimisation="1"/>
-        <CONFIGURATION isDebug="0" name="Release"/>
         <CONFIGURATION isDebug="0" name="Release32" winArchitecture="Win32"/>
       </CONFIGURATIONS>
       <MODULEPATHS>

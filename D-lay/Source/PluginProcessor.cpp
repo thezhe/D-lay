@@ -2,17 +2,6 @@
 #include "PluginEditor.h"
 
 
-void DynamicWaveshaper::setThreshold(float threshold) noexcept {
-	mThreshold = Decibels::decibelsToGain(threshold);
-}
-void DynamicWaveshaper::setAttack(float attack) noexcept {
-	mAttackCoeff = exp(-1000 / (attack * mSampleRate));
-	mOneMinusAttackCoeff = 1 - mAttackCoeff;
-}
-void DynamicWaveshaper::setRelease(float release) noexcept{
-	mReleaseCoeff = exp(-1000 / (release * mSampleRate));
-}
-
 DlayAudioProcessor::DlayAudioProcessor()
 #ifndef JucePlugin_PreferredChannelConfigurations
      : AudioProcessor (BusesProperties()
@@ -106,17 +95,14 @@ void DlayAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 	mAAfilter.setMode(dsp::LadderFilter<float>::Mode::LPF24);
 	mAAfilter.prepare(spec);
 	//mDynamicWaveshaper
-	mDynamicWaveshaper = new DynamicWaveshaper(spec);
+	//mDynamicWaveshaper = new DynamicWaveshaper(spec);
 	//mEchoProcessor
-	mEchoProcessor = new DelayLine(spec);
-	mLock = false;
+	mEchoProcessor.prepare(spec);
 }
 
 void DlayAudioProcessor::releaseResources()
 {
-	mAAfilter.reset();
-	delete mEchoProcessor;
-	delete mDynamicWaveshaper;
+	//mAAfilter.reset();
 }
 
 #ifndef JucePlugin_PreferredChannelConfigurations
@@ -147,8 +133,6 @@ void DlayAudioProcessor::processBlock (AudioBuffer<float>& buffer, MidiBuffer& m
 {
 	ScopedNoDenormals noDenormals;
 
-	if (mLock == true)
-		return;
 	/*
 	potential enhancement for stopping and clearing buffers when daw pauses play
 	AudioPlayHead::CurrentPositionInfo info;
@@ -160,13 +144,13 @@ void DlayAudioProcessor::processBlock (AudioBuffer<float>& buffer, MidiBuffer& m
 	for (auto i = mTotalNumInputChannels; i < mTotalNumOutputChannels; ++i)
 		buffer.clear(i, 0, buffer.getNumSamples());
 	//====================================================================processing
-	mEchoProcessor->fillFromDelayBuffer(buffer);
-	if (!mBypass) {
+	mEchoProcessor.fillDelayBuffer(buffer);
+	/*if (!mBypass) {
 		dsp::ProcessContextReplacing<float> writeBlock(mEchoProcessor->mWriteBlock);
 		mAAfilter.process(writeBlock);
 		mDynamicWaveshaper->process(writeBlock);
-	}
-	mEchoProcessor->getFromDelayBuffer(buffer);
+	}*/
+	mEchoProcessor.getFromDelayBuffer(buffer);
 }
 
 
