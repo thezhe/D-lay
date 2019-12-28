@@ -1,3 +1,10 @@
+/*
+  ==============================================================================
+	Zhe Deng 2019
+	thezhefromcenterville@gmail.com
+  ==============================================================================
+*/
+
 #pragma once
 
 #include "../JuceLibraryCode/JuceHeader.h"
@@ -37,16 +44,29 @@ public:
     void getStateInformation (MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
 	//==============================================================================
+	
 	//DelayLine
 	DelayLine mEchoProcessor;
-	//DynamicWaveshaper
-	//DynamicWaveshaper* mDynamicWaveshaper;
-	//ResonantLP to simulate anti-aliasing filter and reconstruction filter of BBD delays
+
+	//Resonant low pass: simulates anti-aliasing filter and reconstruction filter of BBD delays
 	dsp::LadderFilter<float> mAAfilter;
+
+	//DynamicWaveshaper: simulates BBD internal distortion
+	DynamicWaveshaper mDynamicWaveshaper;
+
+	//set mAAfilter and mDynamicWaveshaper On/Off
+	void setAnalog(bool onOffAnalog) noexcept;
+
 private:
-	//environment variables and member buffers
-	int mTotalNumInputChannels;
-	int	mTotalNumOutputChannels;
+	//enable/disable mAAfilter and mDynamicWaveshaper flag
+	bool mAnalog = true;
+
+	//UI-synced parameters
+	AudioProcessorValueTreeState parameters;
+	
+	//environment variables
+	int mTotalNumInputChannels, mTotalNumOutputChannels;
+	
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (DlayAudioProcessor)
 };

@@ -31,9 +31,10 @@ public:
 	//add delayed signal to buffer and mWriteBlock's data in delay line
 	void getFromDelayBuffer(AudioBuffer<float>& buffer) noexcept
 	{
-		updateSmoothers();
+		updateBufParams();
+
 		//set mReadPosition
-		mReadPosition = (mDelayBufferLength + mWritePosition - mRate.get()) % mDelayBufferLength;
+		mReadPosition = (mDelayBufferLength + mWritePosition - mBufRate) % mDelayBufferLength;
 		
 		//normal get case
 		if (mDelayBufferLength > mBlockSize + mReadPosition)
@@ -41,8 +42,8 @@ public:
 			for (int channel = 0; channel < mNumChannels; ++channel) {
 				//get read data
 				const float* delayBufferReadPos = mDelayBuffer.getReadPointer(channel, mReadPosition);
-				mDelayBuffer.addFrom(channel, mWritePosition, delayBufferReadPos, mBlockSize, mFeedback);
-				buffer.addFrom(channel, 0, delayBufferReadPos, mBlockSize, mWet);
+				mDelayBuffer.addFrom(channel, mWritePosition, delayBufferReadPos, mBlockSize, mBufFeedback);
+				buffer.addFrom(channel, 0, delayBufferReadPos, mBlockSize, mBufWet);
 			}
 		}
 		//circular buffer wrap-around
@@ -52,10 +53,10 @@ public:
 				//get read data and remaining samples in mDelayBuffer
 				const float* delayBufferReadPos = mDelayBuffer.getReadPointer(channel, mReadPosition);
 				const int bufferRemaining = mDelayBufferLength - mReadPosition;
-				mDelayBuffer.addFrom(channel, mWritePosition, delayBufferReadPos, bufferRemaining, mFeedback);
-				buffer.addFrom(channel, 0, delayBufferReadPos, bufferRemaining, mWet);
-				mDelayBuffer.addFrom(channel, mWritePosition + bufferRemaining, delayBufferReadPos - mReadPosition, mBlockSize - bufferRemaining, mFeedback);
-				buffer.addFrom(channel, bufferRemaining, delayBufferReadPos - mReadPosition, mBlockSize - bufferRemaining, mWet);
+				mDelayBuffer.addFrom(channel, mWritePosition, delayBufferReadPos, bufferRemaining, mBufFeedback);
+				buffer.addFrom(channel, 0, delayBufferReadPos, bufferRemaining, mBufWet);
+				mDelayBuffer.addFrom(channel, mWritePosition + bufferRemaining, delayBufferReadPos - mReadPosition, mBlockSize - bufferRemaining, mBufFeedback);
+				buffer.addFrom(channel, bufferRemaining, delayBufferReadPos - mReadPosition, mBlockSize - bufferRemaining, mBufWet);
 			}
 		}
 		//update mWritePosition
@@ -67,45 +68,42 @@ public:
 	// Parameters, mWriteBlock, and Extras
 	//==============================================================================
 
-	//set Rate using ms value
+	//set Rate using ms value between 0 and 1000
 	void setRate(float msRate) noexcept;
 
-	//set Feedback using decibel value
+	//set Feedback using decibel value between -INF and 0.0f
 	void setFeedback(float dbFeedback) noexcept;
 
-	//set Wet using percent value
+	//set Wet using percent value between 0 and 100
 	void setWet(int percentWet) noexcept;
 	
 	//process after call to fillDelayLine and before call to getFromDelayLine to simulate delay line insertion effects
 	std::unique_ptr<dsp::AudioBlock<float>> mWriteBlock;
 
-	//clear mDelayBuffer
-	void clearDelayBuffer() noexcept;
-
 private:
-
-	//instantaneous processing parameters (units: num samples, gain, gain)
-	Atomic<int> mRate = 22050; //Rate is not smoothed, wrap in Atomic for thread safety
-	float mFeedback = 0.6f, mWet = 0.75f;
-
-	//use  lock-free and thread safe smoothed parameters
-	LinearSmoothedValue<float>mFeedbackSmoothed, mWetSmoothed;
-
-	//call in prepare to setup smoothers
-	void initSmoothers(double rampTime);
-
-	//call once at start of process to update instantaneous parameters
-	void updateSmoothers() noexcept
+	
+	//called once per getFromDelayBuffer
+	void updateBufParams() noexcept
 	{
-		mFeedback = mFeedbackSmoothed.skip(mBlockSize);
-		mWet = mFeedbackSmoothed.skip(mBlockSize);
+		mBufRate = mRate.get();
+		mBufFeedback = mFeedback.get();
+		mBufWet = mWet.get();
 	}
 
+	//parameters updated via Atomic loads once per buffer
+	int mBufRate = 22050;
+	float mBufFeedback = 0.6f, mBufWet = 0.75f;
+
+
+	//instantaneous processing parameters wrapped in Atomic for thread safety (units: num samples, gain, gain)
+	Atomic<int> mRate = 22050; 
+	Atomic<float> mFeedback = 0.6f, mWet = 0.75f;
+
 	//delay buffer variables
-	int mWritePosition = 0, mReadPosition;
+	int mWritePosition = 0, mReadPosition, mDelayBufferLength;
 	dsp::AudioBlock<float> mDelayBufferBlock;
 	AudioBuffer<float> mDelayBuffer;
 
 	//environment variables
-	int mSampleRate, mBlockSize, mNumChannels, mDelayBufferLength;
+	int mSampleRate, mBlockSize, mNumChannels;
 };

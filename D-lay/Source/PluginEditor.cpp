@@ -1,99 +1,108 @@
+/*
+  ==============================================================================
+	Zhe Deng 2019
+	thezhefromcenterville@gmail.com
+  ==============================================================================
+*/
+
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 
 //==============================================================================
-DlayAudioProcessorEditor::DlayAudioProcessorEditor (DlayAudioProcessor& p)
-    : AudioProcessorEditor (&p), processor (p)
+DlayAudioProcessorEditor::DlayAudioProcessorEditor (DlayAudioProcessor& p, AudioProcessorValueTreeState& apvts)
+    : AudioProcessorEditor (&p), processor (p), valueTreeState(apvts)
 {
+	//change UI appearance
+	mDelay.setText("Delay", dontSendNotification);
+	mDelay.setJustificationType(Justification::centred);
+	mRateLabel.setText("Rate", dontSendNotification);
+	mRate.setTextBoxStyle(Slider::TextBoxRight, false, labelWidth, labelHeight);
+	mRate.setTextValueSuffix("ms");
+	mFeedbackLabel.setText("Feedback", dontSendNotification);
+	mFeedback.setTextBoxStyle(Slider::TextBoxRight, false, labelWidth, labelHeight);
+	mFeedback.setTextValueSuffix("dB");
+	mWetLabel.setText("Wet", dontSendNotification);
+	mWet.setTextBoxStyle(Slider::TextBoxRight, false, labelWidth, labelHeight);
+	mWet.setTextValueSuffix("%");
+
+	mAAfilter.setText("Anti-Aliasing Filter", dontSendNotification);
+	mAAfilter.setJustificationType(Justification::centred);
+	mCutoffLabel.setText("Cutoff", dontSendNotification);
+	mCutoff.setTextBoxStyle(Slider::TextBoxRight, false, labelWidth, labelHeight);
+	mCutoff.setTextValueSuffix("Hz");
+	mResonanceLabel.setText("Resonance", dontSendNotification);
+	mResonance.setTextBoxStyle(Slider::TextBoxRight, false, labelWidth, labelHeight);
 	
-	//setup GUI
-    setSize (400, 620);
+	mDynamicWaveshaper.setText("DynamicWaveshaper", dontSendNotification);
+	mDynamicWaveshaper.setJustificationType(Justification::centred);
+	mThresholdLabel.setText("Threshold", dontSendNotification);
+	mThreshold.setTextBoxStyle(Slider::TextBoxRight, false, labelWidth, labelHeight);
+	mThreshold.setTextValueSuffix("dB");
+	mAttackLabel.setText("Attack", dontSendNotification);
+	mAttack.setTextBoxStyle(Slider::TextBoxRight, false, labelWidth, labelHeight);
+	mAttack.setTextValueSuffix("ms");
+	mReleaseLabel.setText("Release", dontSendNotification);
+	mRelease.setTextBoxStyle(Slider::TextBoxRight, false, labelWidth, labelHeight);
+	mRelease.setTextValueSuffix("ms");
 
-	//make visible
+	mAnalogLabel.setText("Analog", dontSendNotification);
 
-	addAndMakeVisible(mRate);
-	addAndMakeVisible(mFeedback);
-	addAndMakeVisible(mWet);
-
-	mRate.setSliderStyle(Slider::LinearBar);
-	mRate.setRange(0, 1000);
-	mRate.setTextBoxStyle(Slider::NoTextBox, false, 90, 0);
-	mRate.setPopupDisplayEnabled(true, false, this);
-	mRate.setTextValueSuffix("Rate");
-	mRate.setValue(500);
-
-	mFeedback.setSliderStyle(Slider::LinearBar);
-	mFeedback.setRange(-40.0f, 0.0f);
-	mFeedback.setTextBoxStyle(Slider::NoTextBox, false, 90, 0);
-	mFeedback.setPopupDisplayEnabled(true, false, this);
-	mFeedback.setTextValueSuffix("Feedback");
-	mFeedback.setValue(-20.0f);
-
-	mWet.setSliderStyle(Slider::LinearBar);
-	mWet.setRange(0, 100);
-	mWet.setTextBoxStyle(Slider::NoTextBox, false, 90, 0);
-	mWet.setPopupDisplayEnabled(true, false, this);
-	mWet.setTextValueSuffix("Wet");
-	mWet.setValue(50);
-
-	/*
-	mLPFcutoff.setSliderStyle(Slider::LinearBar);
-	mLPFcutoff.setRange(1000, 3000);
-	mLPFcutoff.setTextBoxStyle(Slider::NoTextBox, false, 90, 0);
-	mLPFcutoff.setPopupDisplayEnabled(true, false, this);
-	mLPFcutoff.setTextValueSuffix("LPF Cutoff");
-	mLPFcutoff.setValue(2500);
-
-	mLPFresonance.setSliderStyle(Slider::LinearBar);
-	mLPFresonance.setRange(0, 1);
-	mLPFresonance.setTextBoxStyle(Slider::NoTextBox, false, 90, 0);
-	mLPFresonance.setPopupDisplayEnabled(true, false, this);
-	mLPFresonance.setTextValueSuffix("LPF Resonance");
-	mLPFresonance.setValue(0.3);
-
-	mThreshold.setSliderStyle(Slider::LinearBar);
-	mThreshold.setRange(-100, 0);
-	mThreshold.setTextBoxStyle(Slider::NoTextBox, false, 90, 0);
-	mThreshold.setPopupDisplayEnabled(true, false, this);
-	mThreshold.setTextValueSuffix("Threshold");
-	mThreshold.setValue(-10);
-
-	mAttack.setSliderStyle(Slider::LinearBar);
-	mAttack.setRange(0, 1000);
-	mAttack.setTextBoxStyle(Slider::NoTextBox, false, 90, 0);
-	mAttack.setPopupDisplayEnabled(true, false, this);
-	mAttack.setTextValueSuffix("Attack");
-	mAttack.setValue(100);
-
-	mRelease.setSliderStyle(Slider::LinearBar);
-	mRelease.setRange(0, 1000);
-	mRelease.setTextBoxStyle(Slider::NoTextBox, false, 90, 0);
-	mRelease.setPopupDisplayEnabled(true, false, this);
-	mRelease.setTextValueSuffix("Release");
-	mRelease.setValue(200);
-	*/
 	//change processing parameters via lambdas
 	mRate.onValueChange = [this] { processor.mEchoProcessor.setRate(mRate.getValue());};
 	mFeedback.onValueChange = [this] { processor.mEchoProcessor.setFeedback (mFeedback.getValue()); };
 	mWet.onValueChange = [this] { processor.mEchoProcessor.setWet( mWet.getValue()); };
-	/*
-	mLPFcutoff.onValueChange = [this] {processor.mAAfilter.setCutoffFrequencyHz(mLPFcutoff.getValue()); };
-	mLPFresonance.onValueChange = [this] {processor.mAAfilter.setResonance(mLPFresonance.getValue()); };
-	mThreshold.onValueChange = [this] {processor.mDynamicWaveshaper->setThreshold(mThreshold.getValue()); };
-	mAttack.onValueChange = [this] {processor.mDynamicWaveshaper->setAttack(mAttack.getValue()); };
-	mRelease.onValueChange = [this] {processor.mDynamicWaveshaper->setRelease(mRelease.getValue()); };
-	mBypass.onClick = [this] {processor.bypassBBD(); };
-	*/
 	
+	mCutoff.onValueChange = [this] {processor.mAAfilter.setCutoffFrequencyHz(mCutoff.getValue()); };
+	mResonance.onValueChange = [this] {processor.mAAfilter.setResonance(mResonance.getValue()); };
+	
+	mThreshold.onValueChange = [this] {processor.mDynamicWaveshaper.setThreshold(mThreshold.getValue()); };
+	mAttack.onValueChange = [this] {processor.mDynamicWaveshaper.setAttack(mAttack.getValue()); };
+	mRelease.onValueChange = [this] {processor.mDynamicWaveshaper.setRelease(mRelease.getValue()); };
 
-	/*
-	addAndMakeVisible(&mLPFcutoff);
-	addAndMakeVisible(&mLPFresonance);
-	addAndMakeVisible(&mThreshold);
-	addAndMakeVisible(&mAttack);
-	addAndMakeVisible(&mRelease);
-	addAndMakeVisible(&mBypass);
-	*/
+	mAnalog.onClick = [this] {processor.setAnalog(mAnalog.getToggleState()); };
+
+	//make visible
+	addAndMakeVisible(mDelay);
+	addAndMakeVisible(mRateLabel);
+	addAndMakeVisible(mRate);
+	addAndMakeVisible(mFeedbackLabel);
+	addAndMakeVisible(mFeedback);
+	addAndMakeVisible(mWetLabel);
+	addAndMakeVisible(mWet);
+
+	addAndMakeVisible(mAAfilter);
+	addAndMakeVisible(mCutoffLabel);
+	addAndMakeVisible(mCutoff);
+	addAndMakeVisible(mResonanceLabel);
+	addAndMakeVisible(mResonance);
+
+	addAndMakeVisible(mDynamicWaveshaper);
+	addAndMakeVisible(mThresholdLabel);
+	addAndMakeVisible(mThreshold);
+	addAndMakeVisible(mAttackLabel);
+	addAndMakeVisible(mAttack);
+	addAndMakeVisible(mReleaseLabel);
+	addAndMakeVisible(mRelease);
+
+	addAndMakeVisible(mAnalogLabel);
+	addAndMakeVisible(mAnalog);
+
+	//attach after UI elements to ensure attahments are deleted first in editor's destructor 
+	mRateAttachment = std::make_unique<SliderAttachment>(valueTreeState, "rate", mRate);
+	mFeedbackAttachment = std::make_unique<SliderAttachment>(valueTreeState, "feedback", mFeedback);
+	mWetAttachment = std::make_unique<SliderAttachment>(valueTreeState, "wet", mWet);
+
+	mCutoffAttachment = std::make_unique<SliderAttachment>(valueTreeState, "cutoff", mCutoff);
+	mResonanceAttachment = std::make_unique<SliderAttachment>(valueTreeState, "resonance", mResonance);
+	
+	mThresholdAttachment = std::make_unique<SliderAttachment>(valueTreeState, "threshold", mThreshold);
+	mAttackAttachment = std::make_unique<SliderAttachment>(valueTreeState, "attack", mAttack);
+	mReleaseAttachment = std::make_unique<SliderAttachment>(valueTreeState, "release", mRelease);
+
+	mAnalogAttachment = std::make_unique<ButtonAttachment>(valueTreeState, "analog", mAnalog);
+
+	//set Window
+	setSize(600, 300);
 }
 
 
@@ -113,17 +122,39 @@ void DlayAudioProcessorEditor::paint (Graphics& g)
 void DlayAudioProcessorEditor::resized()
 {
 	//setup slider bounds
+	const int sectionLabelX = (getWidth() / 2) - (sectionLabelWidth/2);
+	const int sliderWidth = getWidth() - sliderX - margin;
 
-	mRate.setBounds(40, 30, getWidth() - 60, 20);
-	mFeedback.setBounds(40, 100, getWidth() - 60, 20);
-	mWet.setBounds(40, 170, getWidth() - 60, 20);
+	//Delay section
+	mDelay.setBounds(sectionLabelX, margin, sectionLabelWidth, sectionLabelHeight);
+	mRateLabel.setBounds(margin, 50, labelWidth, labelHeight);
+	mRate.setBounds(sliderX, 50, sliderWidth, sliderHeight);
+	mFeedbackLabel.setBounds(margin, 70, labelWidth, labelHeight);
+	mFeedback.setBounds(sliderX, 70, sliderWidth, sliderHeight);
+	mWetLabel.setBounds(margin, 90, labelWidth, labelHeight);
+	mWet.setBounds(sliderX, 90, sliderWidth, sliderHeight);
 
-	/*
-	mLPFcutoff.setBounds(40, 240, getWidth() - 60, 20);
-	mLPFresonance.setBounds(40, 310, getWidth() - 60, 20);
-	mThreshold.setBounds(40, 380, getWidth() - 60, 20);
-	mAttack.setBounds(40, 450, getWidth() - 60, 20);
-	mRelease.setBounds(40, 520, getWidth() - 60, 20);
-	mBypass.setBounds(40, 590, 20, 20);
-	*/
+	//Anti Aliasing Filter section
+	mAAfilter.setBounds(sectionLabelX, 110, sectionLabelWidth, sectionLabelHeight);
+	mCutoffLabel.setBounds(margin, 150, labelWidth, labelHeight);
+	mCutoff.setBounds(sliderX, 150, sliderWidth, sliderHeight);
+	mResonanceLabel.setBounds(margin, 170, labelWidth, labelHeight);
+	mResonance.setBounds(sliderX, 170, sliderWidth, sliderHeight);
+
+	//Dynamic Waveshaper section
+	mDynamicWaveshaper.setBounds(sectionLabelX, 190, sectionLabelWidth, sectionLabelHeight);
+	mThresholdLabel.setBounds(margin, 230, labelWidth, labelHeight);
+	mThreshold.setBounds(sliderX, 230, sliderWidth, sliderHeight);
+	mAttackLabel.setBounds(margin, 250, labelWidth, labelHeight);
+	mAttack.setBounds(sliderX, 250, sliderWidth, sliderHeight);
+	mReleaseLabel.setBounds(margin, 270, labelWidth, labelHeight);
+	mRelease.setBounds(sliderX, 270, sliderWidth, sliderHeight);
+
+	//Analog On/Off
+	mAnalogLabel.setBounds(getWidth() - margin - labelWidth - buttonWidth, 110, labelWidth, labelHeight);
+	mAnalog.setBounds(getWidth() - margin - buttonWidth, 110, buttonWidth, buttonWidth);
 }
+
+//TODO make sliders lag and scale appropriately per parameter
+//TODO real time graph of waveshaping transfer function
+//TODO grey out AA filter and DynamicWaveshaper sections when Analog is off

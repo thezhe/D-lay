@@ -1,6 +1,12 @@
+/*
+  ==============================================================================
+	Zhe Deng 2019
+	thezhefromcenterville@gmail.com
+  ==============================================================================
+*/
+
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
-
 
 DlayAudioProcessor::DlayAudioProcessor()
 #ifndef JucePlugin_PreferredChannelConfigurations
@@ -11,9 +17,56 @@ DlayAudioProcessor::DlayAudioProcessor()
                       #endif
                        .withOutput ("Output", AudioChannelSet::stereo(), true)
                      #endif
-                       )
+                       ),
+	parameters(*this, nullptr, Identifier("Dlay"),
+		{
+			std::make_unique<AudioParameterFloat>("rate", //ms
+												"Rate",
+												NormalisableRange<float>(0.0f, 1000.0f, 0.01f, 0.25f),
+												150.0f),
+			std::make_unique<AudioParameterFloat>("feedback", //dB
+												"Feedback",
+												-40.0f,
+												0.0f,
+												-15.0f),
+			std::make_unique<AudioParameterInt>("wet", //percent
+												"Wet",
+												0,
+												100,
+												50),
+			std::make_unique<AudioParameterFloat>("cutoff", //Hz
+												"Cutoff",
+												1000.0f,
+												3000.0f,
+												2000.0f),
+			std::make_unique<AudioParameterFloat>("resonance", //[0,1]
+												"Resonance",
+												NormalisableRange<float>(0.0f, 1.0f, 0.001f, 0.25f),
+												0.1f),
+			std::make_unique<AudioParameterFloat>("threshold",//dB
+												"Threshold",
+												-60.0f,
+												0.0f,
+												-30.0f),
+			std::make_unique<AudioParameterFloat>("attack", //ms
+												"Attack",
+												NormalisableRange<float>(0.0f, 500.0f, 0.01f, 0.25f),
+												50.0f),
+			std::make_unique<AudioParameterFloat>("release", //ms
+												"Release",
+												NormalisableRange<float>(0.0f, 1000.0f, 0.01f, 0.25f),
+												100.0f),
+			std::make_unique<AudioParameterBool>("analog", //On/Off
+												"Analog",
+												true)
+		})
+	
 #endif
 {
+	//set default filter parameters
+	mAAfilter.setCutoffFrequencyHz(2500.0f);
+	mAAfilter.setResonance(0.3f);
+	mAAfilter.setMode(dsp::LadderFilter<float>::Mode::LPF24);
 }
 
 DlayAudioProcessor::~DlayAudioProcessor()
@@ -85,24 +138,24 @@ void DlayAudioProcessor::changeProgramName (int index, const String& newName)
 //==============================================================================
 void DlayAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
-	//environment variables and member buffers
+	//get environment variables
 	mTotalNumInputChannels = getTotalNumInputChannels();
 	mTotalNumOutputChannels = getTotalNumOutputChannels();
 	dsp::ProcessSpec spec{ sampleRate, static_cast<uint32>(samplesPerBlock), static_cast<uint32>(mTotalNumInputChannels) };
-	//mAAfilter
-	mAAfilter.setCutoffFrequencyHz(2500.0f);
-	mAAfilter.setResonance(0.3f);
-	mAAfilter.setMode(dsp::LadderFilter<float>::Mode::LPF24);
-	mAAfilter.prepare(spec);
-	//mDynamicWaveshaper
-	//mDynamicWaveshaper = new DynamicWaveshaper(spec);
+	
 	//mEchoProcessor
 	mEchoProcessor.prepare(spec);
+	
+	//mAAfilter
+	mAAfilter.prepare(spec);
+	
+	//mDynamicWaveshaper
+	mDynamicWaveshaper.prepare(spec);
 }
 
 void DlayAudioProcessor::releaseResources()
 {
-	//mAAfilter.reset();
+	mAAfilter.reset();
 }
 
 #ifndef JucePlugin_PreferredChannelConfigurations
@@ -133,23 +186,18 @@ void DlayAudioProcessor::processBlock (AudioBuffer<float>& buffer, MidiBuffer& m
 {
 	ScopedNoDenormals noDenormals;
 
-	/*
-	potential enhancement for stopping and clearing buffers when daw pauses play
-	AudioPlayHead::CurrentPositionInfo info;
-	getAudioPlayHead().getCurrentPosition(info);
-	if (info.isPlaying)
-		foo();*/
-
 	//clear data
 	for (auto i = mTotalNumInputChannels; i < mTotalNumOutputChannels; ++i)
 		buffer.clear(i, 0, buffer.getNumSamples());
-	//====================================================================processing
+
+	//process
 	mEchoProcessor.fillDelayBuffer(buffer);
-
-		//dsp::ProcessContextReplacing<float> writeBlock(mEchoProcessor->mWriteBlock);
-		//mAAfilter.process(writeBlock);
-		//mDynamicWaveshaper->process(writeBlock);
-
+	if (mAnalog)
+	{
+		dsp::ProcessContextReplacing<float> writeBlock(*(mEchoProcessor.mWriteBlock));
+		mAAfilter.process(writeBlock);
+		mDynamicWaveshaper.process(writeBlock); //place after LPF to prevent aliasing from harmonic generation
+	}
 	mEchoProcessor.getFromDelayBuffer(buffer);
 }
 
@@ -163,21 +211,23 @@ bool DlayAudioProcessor::hasEditor() const
 
 AudioProcessorEditor* DlayAudioProcessor::createEditor()
 {
-    return new DlayAudioProcessorEditor (*this);
+    return new DlayAudioProcessorEditor (*this, parameters);
 }
 
 //==============================================================================
 void DlayAudioProcessor::getStateInformation (MemoryBlock& destData)
 {
-    // You should use this method to store your parameters in the memory block.
-    // You could do that either as raw data, or use the XML or ValueTree classes
-    // as intermediaries to make it easy to save and load complex data.
+	auto state = parameters.copyState();
+	std::unique_ptr<XmlElement> xml(state.createXml());
+	copyXmlToBinary(*xml, destData);
 }
 
 void DlayAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
-    // You should use this method to restore your parameters from this memory block,
-    // whose contents will have been created by the getStateInformation() call.
+	std::unique_ptr<XmlElement> xmlState(getXmlFromBinary(data, sizeInBytes));
+	if (xmlState.get() != nullptr)
+		if (xmlState->hasTagName(parameters.state.getType()))
+			parameters.replaceState(ValueTree::fromXml(*xmlState));
 }
 
 //==============================================================================
@@ -185,4 +235,9 @@ void DlayAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
 AudioProcessor* JUCE_CALLTYPE createPluginFilter()
 {
     return new DlayAudioProcessor();
+}
+
+void DlayAudioProcessor::setAnalog(bool onOffAnalog) noexcept
+{
+	mAnalog = onOffAnalog;
 }
