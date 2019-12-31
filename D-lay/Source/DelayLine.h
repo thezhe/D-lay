@@ -24,7 +24,8 @@ public:
 	void fillDelayBuffer(AudioBuffer<float>& buffer) noexcept
 	{
 		//use smart pointer to automatically manage garbage for every new assignment 
-		mWriteBlock = std::make_unique<dsp::AudioBlock<float>>(mDelayBufferBlock.getSubBlock(mWritePosition, mBlockSize));
+		//use 'make_unique_default_init' intsead of 'reset' once c++20 fully releases for an exception safe method with guaranteed default value initialization (no expensive zeroing of memory)
+		mWriteBlock.reset(new dsp::AudioBlock<float>(mDelayBufferBlock.getSubBlock(mWritePosition, mBlockSize))); 
 		mWriteBlock->copyFrom(buffer, 0, 0, mBlockSize);
 	}
 
@@ -68,10 +69,10 @@ public:
 	// Parameters, mWriteBlock, and Extras
 	//==============================================================================
 
-	//set Rate using ms value between 0 and 1000
+	//set Rate using ms value between 0.0f and 1000.0f
 	void setRate(float msRate) noexcept;
 
-	//set Feedback using decibel value between -INF and 0.0f
+	//set Feedback using decibel value <= 0.0f
 	void setFeedback(float dbFeedback) noexcept;
 
 	//set Wet using percent value between 0 and 100
@@ -81,6 +82,11 @@ public:
 	std::unique_ptr<dsp::AudioBlock<float>> mWriteBlock;
 
 private:
+	
+	//delay buffer variables
+	int mWritePosition = 0, mReadPosition, mDelayBufferLength;
+	dsp::AudioBlock<float> mDelayBufferBlock;
+	AudioBuffer<float> mDelayBuffer;
 	
 	//called once per getFromDelayBuffer
 	void updateBufParams() noexcept
@@ -94,15 +100,9 @@ private:
 	int mBufRate = 22050;
 	float mBufFeedback = 0.6f, mBufWet = 0.75f;
 
-
 	//instantaneous processing parameters wrapped in Atomic for thread safety (units: num samples, gain, gain)
-	Atomic<int> mRate = 22050; 
+	Atomic<int> mRate = 22050;
 	Atomic<float> mFeedback = 0.6f, mWet = 0.75f;
-
-	//delay buffer variables
-	int mWritePosition = 0, mReadPosition, mDelayBufferLength;
-	dsp::AudioBlock<float> mDelayBufferBlock;
-	AudioBuffer<float> mDelayBuffer;
 
 	//environment variables
 	int mSampleRate, mBlockSize, mNumChannels;

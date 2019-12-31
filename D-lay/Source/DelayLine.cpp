@@ -27,7 +27,7 @@ void DelayLine::setRate(float msRate) noexcept
 
 void DelayLine::setFeedback(float dbFeedback) noexcept
 {
-	jassert(dbFeedback >= -40.0f && dbFeedback <= 0.0f);
+	jassert(dbFeedback <= 0.0f);
 	mFeedback = Decibels::decibelsToGain(dbFeedback);
 }
 
