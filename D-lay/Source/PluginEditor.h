@@ -17,6 +17,7 @@ public:
 
 	typedef AudioProcessorValueTreeState::SliderAttachment SliderAttachment;
 	typedef AudioProcessorValueTreeState::ButtonAttachment ButtonAttachment;
+	typedef AudioProcessorValueTreeState::ComboBoxAttachment ComboBoxAttachment;
 
 	DlayAudioProcessorEditor(DlayAudioProcessor& p, AudioProcessorValueTreeState& apvts);
     ~DlayAudioProcessorEditor();
@@ -45,18 +46,28 @@ private:
 		buttonWidth = 30
 	};
 
+	//ComboBox indicies
+	enum
+	{
+		bbd = 1,
+		chebyshev = 2,
+		smashed = 3
+	};
+
 
 	//labels
 	Label mDelay, mAAfilter, mDynamicWaveshaper;
-	Label mRateLabel, mFeedbackLabel, mWetLabel, mCutoffLabel, mResonanceLabel, mThresholdLabel, mAttackLabel, mReleaseLabel, mAnalogLabel;
+	Label mRateLabel, mFeedbackLabel, mWetLabel, mCutoffLabel, mResonanceLabel, mThresholdLabel, mAttackLabel, mReleaseLabel, mAnalogLabel, mTargetWaveshaperLabel;
 
 	//UI parameters
 	Slider mRate, mFeedback, mWet, mCutoff, mResonance, mThreshold, mAttack, mRelease;
 	ToggleButton mAnalog;
+	ComboBox mTargetWaveshaper;
 
 	//parameter attachments
 	std::unique_ptr<SliderAttachment> mRateAttachment, mFeedbackAttachment, mWetAttachment, mCutoffAttachment, mResonanceAttachment, mThresholdAttachment, mAttackAttachment, mReleaseAttachment;
 	std::unique_ptr<ButtonAttachment> mAnalogAttachment;
+	std::unique_ptr<ComboBoxAttachment> mTargetWaveshaperAttachment;
     
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (DlayAudioProcessorEditor)

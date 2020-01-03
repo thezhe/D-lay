@@ -29,15 +29,24 @@ void DynamicWaveshaper::prepare(dsp::ProcessSpec spec)
 #endif	
 
 	//initialize waveshapers and side chain signal
-	mTargetWaveshapers.ensureStorageAllocated(1);
-	//mTargetWaveshapers.add (std::make_unique<dsp::LookupTableTransform<float>>([](float x) {return tanh(20 * x); }, -1.0f, 1.0f, 512));
-	mTargetWaveshapers.add(std::make_unique<dsp::LookupTableTransform<float>>([](float x) {return tanh(20 * x); }, -1.0f, 1.0f, 512));
+	mTargetWaveshapers.ensureStorageAllocated(4);
+	mTargetWaveshapers.add(std::make_unique<dsp::LookupTableTransform<float>>([](float x) {return x; }, -1.0f, 1.0f, 2)); //Linear
+	mTargetWaveshapers.add (std::make_unique<dsp::LookupTableTransform<float>>([](float x) {return x - (pow(x,2)/8.0f) - (pow(x,3)/16.0f) + 0.125f; }, -1.0f, 1.0f, 512)); //BBD waveshaper approxmiation
+	mTargetWaveshapers.add(std::make_unique<dsp::LookupTableTransform<float>>([this](float x) {return x + Decibels::decibelsToGain(-48.0f)*T_2(x) 
+		+ Decibels::decibelsToGain(-74.0f) * T_3(x) + Decibels::decibelsToGain(-90.0f) * T_4(x); }, -1.0f, 1.0f, 512)); //Chebyshev Harmonic Matching to 6AU6A Pentode with -90dB noise floor
+	mTargetWaveshapers.add(std::make_unique<dsp::LookupTableTransform<float>>([](float x) {return tanh(15 * x); }, -1.0f, 1.0f, 512)); //Smashed signal with boosted tanh
 	mTargetWaveshapers.minimiseStorageOverheads();
 	mSideChain.setSize(mNumChannels, mBlockSize);
 
 	//initialize parameters
 	setAttack(50.0f);
 	setRelease(100.0f);
+}
+
+void DynamicWaveshaper::setTargetWaveshaper(int choice) noexcept
+{
+	jassert(choice >= 0 && choice <= 3);
+	mTargetWaveshaper = choice;
 }
 
 void DynamicWaveshaper::setThreshold(float dbThreshold) noexcept
@@ -56,5 +65,4 @@ void DynamicWaveshaper::setRelease(float msRelease) noexcept
 {
 	jassert(msRelease >= 0);
 	mReleaseCoeff = exp(-1000 / (msRelease * mSampleRate));
-
 }

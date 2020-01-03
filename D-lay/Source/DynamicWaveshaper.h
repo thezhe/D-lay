@@ -41,7 +41,7 @@ public:
 				for (int i = 0; i < mBlockSize; ++i) {
 					outputBlock.getChannelPointer(channel)[i] = std::lerp(
 						inputBlock.getChannelPointer(channel)[i],
-						mTargetWaveshapers.getUnchecked(0)->processSampleUnchecked(inputBlock.getChannelPointer(channel)[i]),
+						mTargetWaveshapers.getUnchecked(mBufTargetWaveshaper)->processSampleUnchecked(inputBlock.getChannelPointer(channel)[i]),
 						mSideChain.getSample(channel, i)
 					);
 				}
@@ -51,6 +51,9 @@ public:
 
 	// Parameters
 	//==============================================================================
+
+	//set Target Waveshaper using an int in the range [0,3]
+	void setTargetWaveshaper(int choice) noexcept;
 
 	//set Threshold using decibel value <= 0.0f
 	void setThreshold(float dbThreshold) noexcept;
@@ -78,7 +81,7 @@ private:
 		mChunkMaxIn = dsp::SIMDRegister<float>::max(dsp::SIMDRegister<float>::abs(mInterleaved.getChannelPointer(0)[0]), mChunkMaxIn); //get max before processing
 		auto iirMask = dsp::SIMDRegister<float>::greaterThan(mSideChainThreshIn, mLastSample);
 		mInterleaved.getChannelPointer(0)[0] = ((mBufAttackCoeff * mLastSample + ((ONE - mBufAttackCoeff) * mSideChainThreshIn)) & iirMask) 
-			+ ((mBufReleaseCoeff*mLastSample) & (~iirMask));
+			+ ((mBufReleaseCoeff*mLastSample + ((ONE - mBufReleaseCoeff) * mSideChainThreshIn)) & (~iirMask));
 		if (++mChunkCounter == mChunkSize)
 		{
 			mChunkCounter = 0;
@@ -90,7 +93,7 @@ private:
 			mChunkMaxIn = dsp::SIMDRegister<float>::max(dsp::SIMDRegister<float>::abs(mInterleaved.getChannelPointer(0)[i]), mChunkMaxIn);
 			auto iirLoopMask = dsp::SIMDRegister<float>::greaterThan(mSideChainThreshIn, mInterleaved.getChannelPointer(0)[i-1]);
 			mInterleaved.getChannelPointer(0)[i] = ((mBufAttackCoeff * mInterleaved.getChannelPointer(0)[i - 1] + ((ONE - mBufAttackCoeff) * mSideChainThreshIn)) & iirLoopMask) 
-				+ ((mBufReleaseCoeff * mInterleaved.getChannelPointer(0)[i - 1]) & (~iirLoopMask));
+				+ ((mBufReleaseCoeff * mInterleaved.getChannelPointer(0)[i - 1] + ((ONE - mBufReleaseCoeff) * mSideChainThreshIn)) & (~iirLoopMask));
 			if (++mChunkCounter == mChunkSize)
 			{
 				mChunkCounter = 0;
@@ -114,7 +117,7 @@ private:
 				mSideChain.getWritePointer(channel)[0] = mBufAttackCoeff * mLastSample[channel] + ((1 - mBufAttackCoeff) * mSideChainThreshIn[channel]);
 			}
 			else {
-				mSideChain.getWritePointer(channel)[0] = mBufReleaseCoeff * mLastSample[channel];
+				mSideChain.getWritePointer(channel)[0] = mBufReleaseCoeff * mLastSample[channel] + ((1 - mBufReleaseCoeff) * mSideChainThreshIn[channel]);
 			}
 			//update max value in chunk
 			if (abs(inputBlock.getChannelPointer(channel)[0]) > mChunkMaxIn[channel])
@@ -141,7 +144,7 @@ private:
 					mSideChain.getWritePointer(channel)[i] = mBufAttackCoeff * mSideChain.getWritePointer(channel)[i - 1] + ((1 - mBufAttackCoeff) * mSideChainThreshIn[channel]);
 				}
 				else {
-					mSideChain.getWritePointer(channel)[i] = mBufReleaseCoeff * mSideChain.getWritePointer(channel)[i - 1];
+					mSideChain.getWritePointer(channel)[i] = mBufReleaseCoeff * mSideChain.getWritePointer(channel)[i - 1]((1 - mBufReleaseCoeff)* mSideChainThreshIn[channel]);
 				}
 				//update max value in chunk
 				if (abs(inputBlock.getChannelPointer(channel)[i]) > mChunkMaxIn[channel])
@@ -183,13 +186,26 @@ private:
 #else
 	std::unique_ptr<float[]> mLastSample, mChunkMaxIn, mSideChainThreshIn; //use smart pointer to construct in prepare and auto delete in destructor
 #endif
-
+	//chebyshev polynomials of the first kind
+	static float T_2(float x)
+	{
+		return 2 * x * x - 1.0f;
+	}
+	static float T_3(float x)
+	{
+		return (4.0f * pow(x, 3)) - 3.0f * x;
+	}
+	static float T_4(float x)
+	{
+		return (8.0f * pow(x, 4)) - (8.0f * x * x) + 1.0f;
+	}
 	//called once per process
 	void updateBufParams() noexcept
 	{
 		mBufThreshold = mThreshold.get();
 		mBufAttackCoeff = mAttackCoeff.get();
 		mBufReleaseCoeff = mReleaseCoeff.get();
+		mBufTargetWaveshaper = mTargetWaveshaper.get();
 	}
 
 	//parameters updated via Atomic loads once per buffer
@@ -199,8 +215,11 @@ private:
 #else
 	float mBufThreshold, mBufAttackCoeff, mBufReleaseCoeff;
 #endif
+	int mBufTargetWaveshaper;
+
 	//instantaneous processing parameters wrapped in Atomic for thread safety (units: gain, coefficient, coefficient)
 	Atomic<float> mThreshold = 0.1f, mAttackCoeff = 0.99f, mReleaseCoeff = 0.99f;
+	Atomic<int> mTargetWaveshaper = 0;
 
 	//environment variables
 	int mBlockSize, mNumChannels, mSampleRate;

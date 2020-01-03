@@ -47,6 +47,12 @@ DlayAudioProcessorEditor::DlayAudioProcessorEditor (DlayAudioProcessor& p, Audio
 
 	mAnalogLabel.setText("Analog", dontSendNotification);
 
+	mTargetWaveshaperLabel.setText("Target Waveshaper", dontSendNotification);
+	mTargetWaveshaper.setJustificationType(Justification::centred);
+	mTargetWaveshaper.addItem("BBD", bbd);
+	mTargetWaveshaper.addItem("Tube", chebyshev);
+	mTargetWaveshaper.addItem("Smashed", smashed);
+
 	//change processing parameters via lambdas
 	mRate.onValueChange = [this] { processor.mEchoProcessor.setRate(mRate.getValue());};
 	mFeedback.onValueChange = [this] { processor.mEchoProcessor.setFeedback (mFeedback.getValue()); };
@@ -60,6 +66,8 @@ DlayAudioProcessorEditor::DlayAudioProcessorEditor (DlayAudioProcessor& p, Audio
 	mRelease.onValueChange = [this] {processor.mDynamicWaveshaper.setRelease(mRelease.getValue()); };
 
 	mAnalog.onClick = [this] {processor.setAnalog(mAnalog.getToggleState()); };
+
+	mTargetWaveshaper.onChange = [this] {processor.mDynamicWaveshaper.setTargetWaveshaper(mTargetWaveshaper.getSelectedId()); };
 
 	//make visible
 	addAndMakeVisible(mDelay);
@@ -87,6 +95,9 @@ DlayAudioProcessorEditor::DlayAudioProcessorEditor (DlayAudioProcessor& p, Audio
 	addAndMakeVisible(mAnalogLabel);
 	addAndMakeVisible(mAnalog);
 
+	addAndMakeVisible(mTargetWaveshaperLabel);
+	addAndMakeVisible(mTargetWaveshaper);
+
 	//attach after UI elements to ensure attahments are deleted first in editor's destructor 
 	mRateAttachment = std::make_unique<SliderAttachment>(valueTreeState, "rate", mRate);
 	mFeedbackAttachment = std::make_unique<SliderAttachment>(valueTreeState, "feedback", mFeedback);
@@ -101,8 +112,10 @@ DlayAudioProcessorEditor::DlayAudioProcessorEditor (DlayAudioProcessor& p, Audio
 
 	mAnalogAttachment = std::make_unique<ButtonAttachment>(valueTreeState, "analog", mAnalog);
 
+	mTargetWaveshaperAttachment = std::make_unique<ComboBoxAttachment>(valueTreeState, "targetWaveshaper", mTargetWaveshaper);
+
 	//set Window
-	setSize(600, 300);
+	setSize(600, 320);
 }
 
 
@@ -143,12 +156,14 @@ void DlayAudioProcessorEditor::resized()
 
 	//Dynamic Waveshaper section
 	mDynamicWaveshaper.setBounds(sectionLabelX, 190, sectionLabelWidth, sectionLabelHeight);
-	mThresholdLabel.setBounds(margin, 230, labelWidth, labelHeight);
-	mThreshold.setBounds(sliderX, 230, sliderWidth, sliderHeight);
-	mAttackLabel.setBounds(margin, 250, labelWidth, labelHeight);
-	mAttack.setBounds(sliderX, 250, sliderWidth, sliderHeight);
-	mReleaseLabel.setBounds(margin, 270, labelWidth, labelHeight);
-	mRelease.setBounds(sliderX, 270, sliderWidth, sliderHeight);
+	mTargetWaveshaperLabel.setBounds(margin, 230, labelWidth + 30, labelHeight);
+	mTargetWaveshaper.setBounds(sectionLabelX - 20, 230, sectionLabelWidth + 20, sliderHeight);
+	mThresholdLabel.setBounds(margin, 250, labelWidth, labelHeight);
+	mThreshold.setBounds(sliderX, 250, sliderWidth, sliderHeight);
+	mAttackLabel.setBounds(margin, 270, labelWidth, labelHeight);
+	mAttack.setBounds(sliderX, 270, sliderWidth, sliderHeight);
+	mReleaseLabel.setBounds(margin, 290, labelWidth, labelHeight);
+	mRelease.setBounds(sliderX, 290, sliderWidth, sliderHeight);
 
 	//Analog On/Off
 	mAnalogLabel.setBounds(getWidth() - margin - labelWidth - buttonWidth, 110, labelWidth, labelHeight);

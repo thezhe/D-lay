@@ -58,7 +58,11 @@ DlayAudioProcessor::DlayAudioProcessor()
 												100.0f),
 			std::make_unique<AudioParameterBool>("analog", //On/Off
 												"Analog",
-												true)
+												true),
+			std::make_unique<AudioParameterChoice>("targetWaveshaper", //enum
+												"Target Waveshaper",
+												StringArray({"Linear", "BBD","Tube", "Smashed"}),
+												0)
 		})
 	
 #endif
