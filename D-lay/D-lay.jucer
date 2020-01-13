@@ -27,6 +27,7 @@
     <VS2019 targetFolder="Builds/VisualStudio2019">
       <CONFIGURATIONS>
         <CONFIGURATION isDebug="0" name="Release32" winArchitecture="Win32"/>
+        <CONFIGURATION isDebug="0" name="Release" winArchitecture="x64"/>
       </CONFIGURATIONS>
       <MODULEPATHS>
         <MODULEPATH id="juce_audio_basics" path="C:/JUCE/modules"/>

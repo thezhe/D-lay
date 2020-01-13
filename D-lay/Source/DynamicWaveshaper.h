@@ -19,7 +19,7 @@ public:
 	// Essential Methods
 	//==============================================================================
 
-	//save environment variables and waveshaper/en
+	//save environment variables and waveshaper/envelope
 	void prepare(dsp::ProcessSpec spec);
 
 	//extract thresholded, smoothed signal envelope and apply weighted waveshaper of choice
