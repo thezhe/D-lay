@@ -24,7 +24,7 @@ DlayAudioProcessorEditor::DlayAudioProcessorEditor (DlayAudioProcessor& p, Audio
 	mWetLabel.setText("Wet", dontSendNotification);
 	mWet.setTextBoxStyle(Slider::TextBoxRight, false, labelWidth, labelHeight);
 	mWet.setTextValueSuffix("%");
-
+	
 	mAAfilter.setText("Anti-Aliasing Filter", dontSendNotification);
 	mAAfilter.setJustificationType(Justification::centred);
 	mCutoffLabel.setText("Cutoff", dontSendNotification);
@@ -33,7 +33,7 @@ DlayAudioProcessorEditor::DlayAudioProcessorEditor (DlayAudioProcessor& p, Audio
 	mResonanceLabel.setText("Resonance", dontSendNotification);
 	mResonance.setTextBoxStyle(Slider::TextBoxRight, false, labelWidth, labelHeight);
 	
-	mDynamicWaveshaper.setText("DynamicWaveshaper", dontSendNotification);
+	mDynamicWaveshaper.setText("Dynamic Waveshaper", dontSendNotification);
 	mDynamicWaveshaper.setJustificationType(Justification::centred);
 	mThresholdLabel.setText("Threshold", dontSendNotification);
 	mThreshold.setTextBoxStyle(Slider::TextBoxRight, false, labelWidth, labelHeight);

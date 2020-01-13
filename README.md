@@ -1,5 +1,7 @@
 # D-lay
-A Distorted Delay based off of the traditional analog BBD (Bucket Brigade Delay)
-[Accompanying Portfolio Page][1]
+A VST that models the mellow, distorted tones of traditional analog Bucket-Brigade Device ('BBD') delay effects. Written in the latest C++20 draft using the [JUCE framework][1].
 
-[1]: https://the-zhe.com/portfolio/d-lay/
+[Read More][2]
+
+[1]: https://juce.com/
+[2]: https://the-zhe.com/portfolio/d-lay/
