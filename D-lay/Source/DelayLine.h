@@ -1,7 +1,10 @@
 /*
   ==============================================================================
-	Zhe Deng 2019
+	Zhe Deng 2020
 	thezhefromcenterville@gmail.com
+	
+	This file is part of D-lay which is released under the MIT license.
+	See file LICENSE or go to https://github.com/thezhe/D-lay for full license details.
   ==============================================================================
 */
 
